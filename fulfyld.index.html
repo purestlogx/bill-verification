@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fulfyld Fulfillment Bill Verification</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=EB+Garamond:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FDF8F2; --teal:#004C4F; --moss:#375428;
+  --border:rgba(0,76,79,0.12); --shadow:rgba(43,41,37,0.08);
+  --ok:#375428; --flag:#9A4A1E; --info:#5B6B6C; --crit:#8B1E1E;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--teal);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.5;padding:32px 20px 80px}
+.wrap{max-width:1080px;margin:0 auto}
+h1{font-family:'EB Garamond',serif;font-weight:600;font-size:30px;letter-spacing:.01em}
+.sub{color:var(--info);margin-top:4px;font-size:13px}
+.version{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--info);border:1px solid var(--border);border-radius:99px;padding:3px 10px;vertical-align:middle;margin-left:10px}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 2px 8px var(--shadow);padding:20px;margin-top:18px}
+.uploads{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:18px}
+.drop{background:#fff;border:1.5px dashed var(--border);border-radius:14px;padding:18px;cursor:pointer;transition:border-color .15s}
+.drop:hover{border-color:var(--teal)}
+.drop h3{font-family:'EB Garamond',serif;font-size:17px;font-weight:600}
+.drop p{color:var(--info);font-size:12px;margin-top:2px}
+.drop .file{margin-top:8px;font-size:12px;font-weight:700;color:var(--moss);word-break:break-all}
+.drop.loaded{border-style:solid;border-color:var(--moss)}
+.opt{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--info)}
+button{font-family:'DM Sans',sans-serif;text-transform:uppercase;letter-spacing:.12em;font-weight:700;font-size:12px;border-radius:99px;padding:12px 26px;border:1px solid var(--teal);cursor:pointer;transition:all .15s;background:transparent;color:var(--teal)}
+.primary{background:var(--teal);color:#fff}
+.primary:hover{background:var(--moss);border-color:var(--moss)}
+.primary:disabled{opacity:.4;cursor:not-allowed}
+.ghost:hover{border-color:var(--moss);color:var(--moss)}
+.small-btn{padding:7px 16px;font-size:11px}
+.actions{margin-top:22px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:18px}
+.metric{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px 18px;box-shadow:0 2px 8px var(--shadow)}
+.metric .label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--info)}
+.metric .value{font-family:'EB Garamond',serif;font-size:28px;font-weight:600;margin-top:4px}
+.metric .note{font-size:12px;color:var(--info)}
+.check-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.check-head h2{font-family:'EB Garamond',serif;font-size:19px;font-weight:600;flex:1}
+.pill{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;border-radius:99px;padding:4px 12px}
+.pill.ok{background:rgba(55,84,40,.1);color:var(--ok)}
+.pill.flag{background:rgba(154,74,30,.1);color:var(--flag)}
+.pill.off{background:rgba(91,107,108,.12);color:var(--info)}
+.pill.info{background:rgba(0,76,79,.08);color:var(--teal)}
+.check p.desc{color:var(--info);font-size:13px;margin-top:6px}
+table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12.5px}
+th{text-align:left;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--info);border-bottom:1px solid var(--border);padding:6px 8px}
+td{border-bottom:1px solid var(--border);padding:6px 8px;vertical-align:top}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.trunc{color:var(--info);font-size:12px;margin-top:8px;font-style:italic}
+.err{background:rgba(154,74,30,.08);border:1px solid rgba(154,74,30,.25);color:var(--flag);border-radius:14px;padding:14px 18px;margin-top:18px;display:none}
+#results{display:none}
+#settingsPanel{display:none}
+#settingsPanel h2{font-family:'EB Garamond',serif;font-size:21px;font-weight:600}
+#settingsPanel h3{font-family:'EB Garamond',serif;font-size:16px;font-weight:600;margin:18px 0 6px}
+#settingsPanel .hint{color:var(--info);font-size:12px}
+#settingsPanel input[type=number]{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--teal);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 8px;width:100%;text-align:right}
+.gen-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:8px}
+.gen-grid label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--info);display:block;margin-bottom:4px}
+.toggles{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:6px 18px;margin-top:8px}
+.toggles label{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+.toggles input{accent-color:var(--teal);width:15px;height:15px}
+.settings-actions{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+.cardnote{font-size:12px;color:var(--info);margin-top:8px}
+#rateGridWrap{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:10px;margin-top:4px}
+#rateGrid{border-collapse:collapse;font-size:12px;width:100%}
+#rateGrid th{position:sticky;top:0;background:var(--bg);z-index:1;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--info);padding:5px 4px;border-bottom:1px solid var(--border)}
+#rateGrid td{padding:2px 4px;border-bottom:1px solid var(--border)}
+#rateGrid td.wlabel{font-weight:700;text-align:right;color:var(--info);font-variant-numeric:tabular-nums;white-space:nowrap}
+#rateGrid input{width:60px;font-size:12px;text-align:right;border:1px solid var(--border);border-radius:6px;padding:3px 4px;background:#fff;color:var(--teal)}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Fulfyld Fulfillment Bill Verification<span class="version">v1.6.0</span></h1>
+  <div class="sub">Verifies the Fulfyld billing detail (BDR) against the FF_STANDARD rate card and your Shopify order export — rate variance (over &amp; under, in dollars), fuel surcharge band, additional items, line arithmetic, coverage, and duplicates. Non-shipping charges (receiving, rework, storage) are surfaced separately.</div>
+
+  <div class="uploads">
+    <div class="drop" id="dropBill">
+      <h3>Fulfyld BDR</h3>
+      <p>Billing detail export .csv (Zone, Weight, charges)</p>
+      <div class="file" id="fileBill">No file selected</div>
+      <input type="file" accept=".csv" hidden>
+    </div>
+    <div class="drop" id="dropOrders">
+      <h3>Shopify Order Export <span class="opt">optional</span></h3>
+      <p>orders_export .csv for coverage checks</p>
+      <div class="file" id="fileOrders">No file selected</div>
+      <input type="file" accept=".csv" hidden>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="primary" id="btnRun" disabled>Run verification</button>
+    <button class="ghost" id="btnSettings">Settings</button>
+    <button class="ghost" id="btnExport" style="display:none">Export findings to Excel</button>
+  </div>
+
+  <div class="card" id="settingsPanel">
+    <h2>Verification rules</h2>
+    <p class="hint">Rules apply on the next run and are saved in this browser.</p>
+    <h3>FF_STANDARD rate card</h3>
+    <p class="cardnote">Edit any rate below, then Save. Weight brackets and zone columns are fixed labels &mdash; you&rsquo;re editing the dollar amounts. Invalid or blank cells are blocked on save. Use <strong>Restore built-in card</strong> to undo edits. (If Fulfyld changes the weight brackets themselves, tell me and I&rsquo;ll ship an updated build.)</p>
+    <div style="margin:8px 0"><button class="ghost small-btn" id="btnResetCard" type="button">Restore built-in card</button></div>
+    <div id="rateGridWrap"><table id="rateGrid"></table></div>
+    <h3>General</h3>
+    <div class="gen-grid">
+      <div><label for="setTol">Rate tolerance (USD)</label><input type="number" id="setTol" step="0.005" min="0"></div>
+      <div><label for="setFuelMin">Fuel surcharge floor (% of base)</label><input type="number" id="setFuelMin" step="0.5" min="0"></div>
+      <div><label for="setFuelMax">Fuel surcharge cap (% of base)</label><input type="number" id="setFuelMax" step="0.5" min="0"></div>
+      <div><label for="setAddFee">Additional-item fee (USD/unit)</label><input type="number" id="setAddFee" step="0.05" min="0"></div>
+      <div><label for="setFreeQty">Free units per order</label><input type="number" id="setFreeQty" step="1" min="0"></div>
+    </div>
+    <p class="hint" style="margin-top:6px">Fuel is checked as a band, not just a ceiling. This bill runs 8% (USPS) and 11% (other carrier); set the floor and cap to your contracted terms. Lines above the cap are flagged Over, below the floor Under (a possible mis-rate). Set floor to 0 to disable the lower bound.</p>
+    <h3>Checks to run</h3>
+    <div class="toggles" id="checkToggles"></div>
+    <div class="settings-actions">
+      <button class="primary" id="btnSaveSettings">Save settings</button>
+      <button class="ghost" id="btnResetSettings">Reset to defaults</button>
+      <button class="ghost" id="btnCloseSettings">Close</button>
+    </div>
+  </div>
+
+  <div class="err" id="errBox"></div>
+  <div id="results"></div>
+</div>
+
+<script>
+/* ============================================================
+   verify-core.js — shared runtime for 3PL bill-verification tools
+   Domain-agnostic: CSS lives in verify-core.css; this file owns the
+   generic helpers (number/CSV parsing, settings persistence) and the
+   app wiring (uploads, run, settings panel, dashboard + check tables,
+   Excel export). Tool-specific code (parsers, runVerification, rate
+   cards, settings form) is supplied by each tool's app via initApp().
+   ============================================================ */
+const VK = (function(){
+
+  // ---- generic value helpers ----
+  function num(v){ const n = Number(String(v ?? '').replace(/[$,]/g,'')); return isNaN(n) ? 0 : n; }
+  function makeFmt(locale){
+    return function(v){ return typeof v === 'number' ? v.toLocaleString(locale, { maximumFractionDigits:4 }) : v; };
+  }
+
+  // ---- RFC-4180 CSV parsing (quoted fields, embedded commas/quotes/newlines) ----
+  function parseCSV(text){
+    const rows = []; let row = [], field = '', i = 0, inQ = false;
+    text = String(text).replace(/^\uFEFF/, '');
+    while(i < text.length){
+      const c = text[i];
+      if(inQ){
+        if(c === '"'){ if(text[i+1] === '"'){ field += '"'; i += 2; continue; } inQ = false; i++; continue; }
+        field += c; i++; continue;
+      }
+      if(c === '"'){ inQ = true; i++; continue; }
+      if(c === ','){ row.push(field); field = ''; i++; continue; }
+      if(c === '\r'){ i++; continue; }
+      if(c === '\n'){ row.push(field); rows.push(row); row = []; field = ''; i++; continue; }
+      field += c; i++;
+    }
+    if(field.length || row.length){ row.push(field); rows.push(row); }
+    return rows;
+  }
+  function csvToObjects(text){
+    const rows = parseCSV(text).filter(r => r.some(c => String(c).trim() !== ''));
+    if(!rows.length) return [];
+    const head = rows[0].map(h => h.trim());
+    return rows.slice(1).map(r => { const o = {}; head.forEach((h,j) => o[h] = r[j] ?? ''); return o; });
+  }
+
+  // ---- settings persistence (localStorage; safe in private mode) ----
+  function loadSettings(key, defaults){
+    const base = JSON.parse(JSON.stringify(defaults));
+    try{
+      const raw = localStorage.getItem(key);
+      if(!raw) return base;
+      const s = JSON.parse(raw);
+      return { ...base, ...s, enabled: { ...(base.enabled||{}), ...(s.enabled||{}) } };
+    }catch(e){ return base; }
+  }
+  function saveSettings(key, settings){ try{ localStorage.setItem(key, JSON.stringify(settings)); }catch(e){} }
+
+  // ---- app wiring ----
+  // config = {
+  //   settingsKey, defaults, locale, exportFilename,
+  //   uploads: [{ dropId, fileId, key, read:'text'|'buffer', parser }],
+  //   runReady: state => bool,
+  //   verify: (state, settings) => res,           // res = { checks, totals }
+  //   checkMeta: [[key, title, desc, critical?], ...],
+  //   dashboard: (totals, checks, fmt) => [{ label, value, note, critical? }],
+  //   summaryRows: (totals, settings) => [{ Item, Value }],
+  //   settingsForm: { render(settings, panelEl), read(panelEl, settings) => bool },
+  //   noFileLabel: optional string for the 'nofile' pill,
+  //   maxRows: optional (default 50)
+  // }
+  function initApp(config){
+    const MAX_ROWS = config.maxRows || 50;
+    const fmt = makeFmt(config.locale || 'en-US');
+    const state = { result:null };
+    let settings = loadSettings(config.settingsKey, config.defaults);
+
+    const $ = id => document.getElementById(id);
+    const errBox = $('errBox');
+    function showError(msg){ errBox.textContent = msg; errBox.style.display = 'block'; }
+    function hideError(){ errBox.style.display = 'none'; }
+
+    // uploads
+    for(const u of config.uploads){
+      const drop = $(u.dropId), input = drop.querySelector('input');
+      drop.addEventListener('click', () => input.click());
+      input.addEventListener('change', async () => {
+        const f = input.files[0];
+        if(!f) return;
+        try{
+          const raw = u.read === 'buffer' ? await f.arrayBuffer() : await f.text();
+          state[u.key] = u.parser(raw);
+          $(u.fileId).textContent = f.name;
+          drop.classList.add('loaded');
+          hideError();
+        }catch(e){ showError(`Could not read ${f.name}: ${e.message}`); }
+        $('btnRun').disabled = !config.runReady(state);
+      });
+    }
+
+    // run
+    $('btnRun').addEventListener('click', () => {
+      try{
+        state.result = config.verify(state, settings);
+        render(state.result);
+        $('btnExport').style.display = 'inline-block';
+        hideError();
+      }catch(e){ showError('Verification failed: ' + e.message); }
+    });
+
+    // settings panel
+    const panel = $('settingsPanel');
+    $('btnSettings').addEventListener('click', () => {
+      config.settingsForm.render(settings, panel);
+      panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+    });
+    $('btnSaveSettings').addEventListener('click', () => {
+      if(!config.settingsForm.read(panel, settings)) return;
+      saveSettings(config.settingsKey, settings);
+      hideError();
+      panel.style.display = 'none';
+      if(state.result && config.runReady(state)){ state.result = config.verify(state, settings); render(state.result); }
+    });
+    $('btnResetSettings').addEventListener('click', () => {
+      settings = JSON.parse(JSON.stringify(config.defaults));
+      saveSettings(config.settingsKey, settings);
+      config.settingsForm.render(settings, panel);
+    });
+    $('btnCloseSettings').addEventListener('click', () => { panel.style.display = 'none'; });
+
+    // ---- settings import / export (rate cards & rules live in a private JSON, not in this file) ----
+    (function(){
+      const actions = panel.querySelector('.settings-actions');
+      if(!actions) return;
+      const impBtn = document.createElement('button');
+      impBtn.type = 'button'; impBtn.className = 'ghost'; impBtn.id = 'btnImportSettings'; impBtn.textContent = 'Import settings';
+      const expBtn = document.createElement('button');
+      expBtn.type = 'button'; expBtn.className = 'ghost'; expBtn.id = 'btnExportSettings'; expBtn.textContent = 'Export settings';
+      const fileInp = document.createElement('input');
+      fileInp.type = 'file'; fileInp.accept = '.json,application/json'; fileInp.hidden = true; fileInp.id = 'settingsFileInput';
+      const msg = document.createElement('span');
+      msg.id = 'settingsIoMsg'; msg.style.cssText = 'font-size:12px;color:var(--info);align-self:center;';
+      actions.appendChild(impBtn); actions.appendChild(expBtn); actions.appendChild(fileInp); actions.appendChild(msg);
+
+      expBtn.addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(settings, null, 2)], { type:'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = config.settingsKey.replace(/Settings.*/i,'') + '-settings.json';
+        a.click(); URL.revokeObjectURL(a.href);
+      });
+      impBtn.addEventListener('click', () => { fileInp.value = ''; fileInp.click(); });
+      fileInp.addEventListener('change', () => {
+        const f = fileInp.files && fileInp.files[0]; if(!f) return;
+        const rd = new FileReader();
+        rd.onload = () => {
+          try{
+            const s = JSON.parse(rd.result);
+            if(!s || typeof s !== 'object' || Array.isArray(s)) throw new Error('not a settings object');
+            const base = JSON.parse(JSON.stringify(config.defaults));
+            settings = { ...base, ...s, enabled: { ...(base.enabled||{}), ...(s.enabled||{}) } };
+            saveSettings(config.settingsKey, settings);
+            config.settingsForm.render(settings, panel);
+            msg.textContent = '\u2713 Settings imported from ' + f.name;
+            setTimeout(() => { msg.textContent = ''; }, 4000);
+            if(state.result && config.runReady(state)){ state.result = config.verify(state, settings); render(state.result); }
+          }catch(e){ msg.textContent = 'Import failed: not a valid settings JSON'; setTimeout(() => { msg.textContent = ''; }, 5000); }
+        };
+        rd.readAsText(f);
+      });
+    })();
+
+    // render dashboard + checks
+    function pillFor(rows, kind){
+      if(rows === null) return '<span class="pill off">Disabled</span>';
+      if(rows === 'nofile') return `<span class="pill info">${config.noFileLabel || 'Not run — missing optional file'}</span>`;
+      if(rows === 'noconfig') return '<span class="pill info">Not configured — import settings</span>';
+      if(rows.length === 0) return '<span class="pill ok">Pass</span>';
+      if(kind === 'info') return `<span class="pill info">${rows.length} shown</span>`;
+      return `<span class="pill flag">${rows.length} flagged</span>`;
+    }
+    function render(res){
+      const metrics = config.dashboard(res.totals, res.checks, fmt);
+      let html = '<div class="dash">' + metrics.map(m =>
+        `<div class="metric"><div class="label">${m.label}</div><div class="value"${m.critical?' style="color:var(--crit)"':''}>${m.value}</div><div class="note">${m.note||''}</div></div>`
+      ).join('') + '</div>';
+      for(const [key, title, desc, meta] of config.checkMeta){
+        const rows = res.checks[key];
+        const kind = meta === 'info' ? 'info' : null;
+        const critical = meta && meta !== 'info';
+        const isCrit = critical && Array.isArray(rows) && rows.length;
+        html += `<div class="card check${isCrit?' critical':''}"><div class="check-head"><h2>${title}</h2>${pillFor(rows, kind)}</div><p class="desc">${desc}</p>`;
+        if(Array.isArray(rows) && rows.length){
+          const cols = Object.keys(rows[0]);
+          html += '<table><thead><tr>' + cols.map(c=>`<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+          for(const r of rows.slice(0, MAX_ROWS))
+            html += '<tr>' + cols.map(c=>`<td class="${typeof r[c]==='number'?'num':''}">${fmt(r[c])}</td>`).join('') + '</tr>';
+          html += '</tbody></table>';
+          if(rows.length > MAX_ROWS) html += `<div class="trunc">Showing ${MAX_ROWS} of ${rows.length} rows — full list in the Excel export.</div>`;
+        }
+        html += '</div>';
+      }
+      const box = $('results'); box.innerHTML = html; box.style.display = 'block';
+    }
+
+    // export
+    $('btnExport').addEventListener('click', () => {
+      const res = state.result; if(!res) return;
+      const wb = XLSX.utils.book_new();
+      const summary = config.summaryRows(res.totals, settings).slice();
+      for(const [key, title] of config.checkMeta.map(m=>[m[0],m[1]]))
+        summary.push({ Item:`${title} — flagged`, Value: res.checks[key] === null ? 'Disabled' : res.checks[key] === 'nofile' ? 'Not run' : res.checks[key] === 'noconfig' ? 'Not configured' : res.checks[key].length });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), 'Summary');
+      for(const [key, title] of config.checkMeta.map(m=>[m[0],m[1]])){
+        const data = res.checks[key];
+        const rows = data === null ? [{ Result:'Check disabled in settings' }]
+          : data === 'nofile' ? [{ Result:'Not run — optional file not uploaded' }]
+          : data === 'noconfig' ? [{ Result:'Not configured — import your settings file (Settings → Import settings)' }]
+          : data.length ? data : [{ Result:'Pass — no discrepancies' }];
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), title.replace(/[\\/?*\[\]:]/g,'').slice(0,31));
+      }
+      if(typeof config.extraSheets === 'function'){
+        for(const sh of (config.extraSheets(res, settings) || [])){
+          const ws = sh.aoa ? XLSX.utils.aoa_to_sheet(sh.aoa) : XLSX.utils.json_to_sheet(sh.rows || []);
+          XLSX.utils.book_append_sheet(wb, ws, String(sh.name).replace(/[\\/?*\[\]:]/g,'').slice(0,31));
+        }
+      }
+      XLSX.writeFile(wb, config.exportFilename);
+    });
+  }
+
+  return { num, makeFmt, parseCSV, csvToObjects, loadSettings, saveSettings, initApp };
+})();
+if(typeof window !== 'undefined'){ window.VK = VK; }
+
+
+</script>
+<script>
+/* ============================================================
+   3PL Fulfyld — app logic (parsers, checks, rate card, config)
+   Runs on verify-core.js (VK). runVerification takes settings
+   explicitly; no globals.
+   ============================================================ */
+// FF_STANDARD rate card: [weightUpToLb, zone2..zone9]
+const DEFAULT_RATE_CARD = [];  // contract rate card lives in the private settings JSON — import it via Settings
+const CARD_ZONES = [2,3,4,5,6,7,8,9];
+
+const DEFAULT_SETTINGS = {
+  tolerance: 0.01,
+  fuelMinPct: 0,   // contract terms live in the private settings JSON — 0/0 = not configured
+  fuelMaxPct: 0,
+  addItemFee: 0,   // 0 = not configured
+  addItemFreeQty: 0,
+  rateCard: DEFAULT_RATE_CARD, // editable in Settings; cloned into settings on load
+  enabled: { rate:true, fuel:true, addItems:true, arithmetic:true, offCard:true,
+             billedNotInExport:true, exportNotBilled:true, duplicates:true, otherCharges:true },
+};
+
+function orderNum(name){ const m = /(\d+)/.exec(String(name)); return m ? Number(m[1]) : null; }
+
+function cardRate(zone, weightLb, card){
+  const C = card || DEFAULT_RATE_CARD;
+  const zi = CARD_ZONES.indexOf(Number(zone));
+  if(zi < 0) return null;
+  for(const row of C) if(weightLb <= row[0]) return row[zi+1];
+  return null;
+}
+
+function parseBill(text){
+  const objs = VK.csvToObjects(text);
+  const num = VK.num;
+  const lines = objs.map(o => ({
+    record: String(o['Name']||'').trim(),
+    order: String(o['Channel_Order_Number__c']||'').trim(),
+    sourceRef: String(o['Source_Record_Name__c']||'').trim(),
+    qty: num(o['Billable_Quantity__c']),
+    tracking: String(o['EXT_Tracking_Number__c']||'').replace(/^'/, '').trim(),
+    category: String(o['Charge_Category__c']||'').trim(),
+    type: String(o['Charge_Type__c']||'').trim(),
+    zone: num(o['Zone__c']),
+    weight: num(o['Weight__c']),
+    charge: num(o['Charge_Amount__c']),
+    addItems: num(o['Additional_Items_Fee__c']),
+    kitting: num(o['Shipment_Kitting_Fee__c']),
+    delSur: num(o['Carrier_Delivery_Surcharges__c']),
+    handling: num(o['Carrier_Handling_Fee__c']),
+    peakSur: num(o['Carrier_Peak_Surcharges__c']),
+    fee1: num(o['Additional_Fee_1__c']), fee1Desc: String(o['Additional_Fee_1_Description__c']||'').trim(),
+    fee2: num(o['Additional_Fee_2__c']), fee2Desc: String(o['Additional_Fee_2_Description__c']||'').trim(),
+    total: num(o['Total_Charge_Amount__c']),
+  })).filter(l => l.order || l.record);
+  return { lines };
+}
+
+function parseOrders(text){
+  const objs = VK.csvToObjects(text);
+  const num = VK.num;
+  const byName = new Map();
+  for(const o of objs){
+    const name = String(o['Name']||'').trim();
+    if(!name) continue;
+    if(!byName.has(name)) byName.set(name, {
+      name, fulfillment: String(o['Fulfillment Status']||'').trim(),
+      cancelled: String(o['Cancelled at']||'').trim(),
+      created: String(o['Created at']||'').trim().slice(0,10),
+      shipping: num(o['Shipping']),
+    });
+  }
+  return byName;
+}
+
+function runVerification(bill, ordersByName, settings){
+  const TOL = settings.tolerance, on = settings.enabled;
+  const res = { checks:{}, totals:{} };
+  const lines = bill.lines;
+
+  // 1. Rate variance vs FF_STANDARD card (two-sided: over and under, in dollars)
+  let rateOver = 0, rateUnder = 0, rateOverN = 0, rateUnderN = 0;
+  const cardConfigured = Array.isArray(settings.rateCard) && settings.rateCard.length > 0;
+  if(on.rate && !cardConfigured){ res.checks.rate = 'noconfig'; }
+  else if(on.rate){
+    const rows = [];
+    for(const l of lines){
+      const card = cardRate(l.zone, l.weight, settings.rateCard);
+      if(card === null) continue;
+      const v = +(l.charge - card).toFixed(2);
+      if(Math.abs(v) > TOL){
+        if(v > 0){ rateOver += v; rateOverN++; } else { rateUnder += v; rateUnderN++; }
+        rows.push({ 'Order':l.order, 'Record':l.record, 'Zone':l.zone, 'Weight (lb)':l.weight,
+          'Card Rate (USD)':card, 'Billed Charge (USD)':l.charge, 'Variance (USD)':v,
+          'Note': v > 0 ? 'Billed above card (overcharge)' : 'Billed below card (undercharge)' });
+      }
+    }
+    res.checks.rate = rows;
+  } else res.checks.rate = null;
+  res.rateVar = { over:+rateOver.toFixed(2), under:+rateUnder.toFixed(2), net:+(rateOver+rateUnder).toFixed(2), overN:rateOverN, underN:rateUnderN };
+
+  // 2. Fuel surcharge band (floor .. cap) with dollar variance vs the nearest edge
+  if(on.fuel && !((settings.fuelMinPct||0) > 0 || (settings.fuelMaxPct||0) > 0)){ res.checks.fuel = 'noconfig'; res.fuelVar = null; }
+  else if(on.fuel){
+    const rows = [];
+    const lo = settings.fuelMinPct || 0, hi = settings.fuelMaxPct || 0;
+    let fuelOver = 0, fuelUnder = 0, fuelOverN = 0, fuelUnderN = 0;
+    for(const l of lines){
+      if(l.fee2 <= 0 || l.charge <= 0) continue;
+      const pct = l.fee2 / l.charge * 100;
+      let variance = 0, note = '';
+      if(hi && pct > hi + 1e-9){ variance = +(l.fee2 - l.charge * hi / 100).toFixed(2); fuelOver += variance; fuelOverN++; note = 'Above fuel cap (' + hi + '%)'; }
+      else if(lo && pct < lo - 1e-9){ variance = +(l.fee2 - l.charge * lo / 100).toFixed(2); fuelUnder += variance; fuelUnderN++; note = 'Below fuel floor (' + lo + '%) — possible mis-rate'; }
+      else continue; // inside the band
+      rows.push({ 'Order':l.order, 'Description':l.fee2Desc, 'Base Charge (USD)':l.charge,
+        'Fuel Fee (USD)':l.fee2, 'Fuel %':+pct.toFixed(1), 'Band %':lo + '–' + hi,
+        'Variance vs band (USD)':variance, 'Note':note });
+    }
+    res.checks.fuel = rows;
+    res.fuelVar = { over:+fuelOver.toFixed(2), under:+fuelUnder.toFixed(2), net:+(fuelOver + fuelUnder).toFixed(2), overN:fuelOverN, underN:fuelUnderN };
+  } else { res.checks.fuel = null; res.fuelVar = null; }
+
+  // 2b. Additional items fee — per order
+  if(on.addItems && !((settings.addItemFee||0) > 0)){ res.checks.addItems = 'noconfig'; }
+  else if(on.addItems){
+    const rows = [];
+    const byOrder = new Map();
+    for(const l of lines){
+      let o = byOrder.get(l.order);
+      if(!o){ o = { order:l.order, qty:0, fee:0, records:[] }; byOrder.set(l.order, o); }
+      o.qty += l.qty; o.fee += l.addItems; o.records.push(l.record);
+    }
+    for(const o of byOrder.values()){
+      const expected = +(Math.max(0, o.qty - settings.addItemFreeQty) * settings.addItemFee).toFixed(2);
+      const v = +(o.fee - expected).toFixed(2);
+      if(Math.abs(v) > TOL)
+        rows.push({ 'Order':o.order, 'Records':o.records.join(', '), 'Total Units':o.qty,
+          'Units Over Free':Math.max(0, o.qty - settings.addItemFreeQty),
+          'Expected Fee (USD)':expected, 'Billed Fee (USD)':+o.fee.toFixed(2), 'Variance (USD)':v,
+          'Note': v > 0 ? 'Billed above expected additional-items fee' : 'Billed below expected (under-charged)' });
+    }
+    res.checks.addItems = rows;
+  } else res.checks.addItems = null;
+
+  // 3. Line arithmetic
+  if(on.arithmetic){
+    const rows = [];
+    for(const l of lines){
+      const sum = l.charge + l.addItems + l.kitting + l.delSur + l.handling + l.peakSur + l.fee1 + l.fee2;
+      if(Math.abs(sum - l.total) > TOL)
+        rows.push({ 'Order':l.order, 'Record':l.record, 'Sum of Components (USD)':+sum.toFixed(2),
+          'Billed Total (USD)':l.total, 'Difference (USD)':+(sum - l.total).toFixed(2) });
+    }
+    res.checks.arithmetic = rows;
+  } else res.checks.arithmetic = null;
+
+  // 4. Off-card (shipping lines only — non-shipping charge types are handled separately)
+  if(on.offCard && !cardConfigured){ res.checks.offCard = 'noconfig'; }
+  else if(on.offCard){
+    const rows = [];
+    for(const l of lines){
+      if(l.type !== 'FF_STANDARD') continue;
+      if(cardRate(l.zone, l.weight, settings.rateCard) === null)
+        rows.push({ 'Order':l.order, 'Record':l.record, 'Zone':l.zone, 'Weight (lb)':l.weight,
+          'Billed Charge (USD)':l.charge,
+          'Note': CARD_ZONES.includes(l.zone) ? 'Weight above card maximum (150 lb)' : 'Zone not on rate card' });
+    }
+    res.checks.offCard = rows;
+  } else res.checks.offCard = null;
+
+  // 4b. Other (non-shipping) charges — surfaced, not rate-verified; informational, not counted as issues
+  if(on.otherCharges){
+    const rows = [];
+    for(const l of lines){
+      if(l.type === 'FF_STANDARD') continue;
+      rows.push({ 'Reference':l.order || l.record, 'Category':l.category, 'Charge Type':l.type,
+        'Quantity':l.qty, 'Total (USD)':l.total,
+        'Note': l.category === 'Storage' ? 'Storage — excluded by choice' : 'Not rate-verified (no card for this charge type)' });
+    }
+    res.checks.otherCharges = rows;
+  } else res.checks.otherCharges = null;
+
+  // 5 & 6. Coverage
+  if(!ordersByName){
+    res.checks.billedNotInExport = on.billedNotInExport ? 'nofile' : null;
+    res.checks.exportNotBilled = on.exportNotBilled ? 'nofile' : null;
+  } else {
+    const realBillLine = l => l.type === 'FF_STANDARD' && l.order && l.order.toLowerCase() !== 'not applicable';
+    const billedOrders = new Set(lines.filter(realBillLine).map(l => l.order));
+    const orderNums = lines.filter(realBillLine).map(l => orderNum(l.order)).filter(n => n !== null);
+    const billMin = Math.min(...orderNums), billMax = Math.max(...orderNums);
+    const exportNums = [...ordersByName.keys()].map(orderNum).filter(n => n !== null);
+    const expMin = Math.min(...exportNums), expMax = Math.max(...exportNums);
+
+    if(on.billedNotInExport){
+      const rows = [], seen = new Set();
+      for(const l of lines){
+        if(!realBillLine(l)) continue;                 // shipping orders only — non-shipping lines have no Shopify order
+        if(ordersByName.has(l.order) || seen.has(l.order)) continue;
+        seen.add(l.order);
+        const n = orderNum(l.order);
+        const cls = (n !== null && (n < expMin || n > expMax))
+          ? `Outside the export's order range (#${expMin}-#${expMax}) - upload the matching export`
+          : 'Within export range but missing - investigate with Fulfyld';
+        rows.push({ 'Order':l.order, 'Record':l.record, 'Total (USD)':l.total, 'Classification':cls });
+      }
+      res.checks.billedNotInExport = rows;
+    } else res.checks.billedNotInExport = null;
+
+    if(on.exportNotBilled){
+      const rows = [];
+      for(const o of ordersByName.values()){
+        if(billedOrders.has(o.name)) continue;
+        if(o.cancelled) continue;
+        const n = orderNum(o.name);
+        const cls = (n !== null && (n < billMin || n > billMax))
+          ? `Outside the bill's order range (#${billMin}-#${billMax}) - expected in another billing cycle`
+          : 'Within bill range but not billed - investigate';
+        rows.push({ 'Order':o.name, 'Fulfillment':o.fulfillment, 'Created':o.created, 'Classification':cls });
+      }
+      res.checks.exportNotBilled = rows;
+    } else res.checks.exportNotBilled = null;
+  }
+
+  // 7. Duplicates — shipping (FF_STANDARD) lines only, keyed on a real order number.
+  //    Non-shipping lines (receiving/rework/storage) carry no order number ('Not Applicable'),
+  //    so they must not cluster together as false duplicates — they live in Other charges.
+  if(on.duplicates){
+    const realKey = l => l.type === 'FF_STANDARD' && l.order && l.order.toLowerCase() !== 'not applicable';
+    const counts = new Map();
+    for(const l of lines){ if(!realKey(l)) continue; counts.set(l.order, (counts.get(l.order)||0)+1); }
+    const rows = [];
+    for(const l of lines){ if(!realKey(l)) continue; if(counts.get(l.order) > 1)
+      rows.push({ 'Order':l.order, 'Record':l.record, 'Source Ref':l.sourceRef,
+        'Zone':l.zone, 'Weight (lb)':l.weight, 'Total (USD)':l.total,
+        'Note':'Order billed on more than one shipment - verify split shipment vs double charge' }); }
+    res.checks.duplicates = rows;
+  } else res.checks.duplicates = null;
+
+  res.totals = {
+    billLines: lines.length,
+    billedCharge: +lines.reduce((s,l)=>s+l.charge,0).toFixed(2),
+    billedTotal: +lines.reduce((s,l)=>s+l.total,0).toFixed(2),
+    fuelTotal: +lines.reduce((s,l)=>s+l.fee2,0).toFixed(2),
+    rateOver: +rateOver.toFixed(2),
+    rateUnder: res.rateVar.under, rateNet: res.rateVar.net, rateOverN, rateUnderN,
+    fuelOver: res.fuelVar ? res.fuelVar.over : 0, fuelUnder: res.fuelVar ? res.fuelVar.under : 0,
+    fuelNet: res.fuelVar ? res.fuelVar.net : 0, fuelOverN: res.fuelVar ? res.fuelVar.overN : 0, fuelUnderN: res.fuelVar ? res.fuelVar.underN : 0,
+    fuelBand: (settings.fuelMinPct||0) + '–' + (settings.fuelMaxPct||0) + '%',
+    otherCharges: +lines.filter(l=>l.type!=='FF_STANDARD').reduce((s,l)=>s+l.total,0).toFixed(2),
+    reportRows: ordersByName ? ordersByName.size : 0,
+  };
+  return res;
+}
+
+/* ---- check metadata, dashboard, settings form, and kit wiring ---- */
+const CHECK_META = [
+  ['rate','Rate variance','Billed shipping charge vs the FF_STANDARD card rate at the line\u2019s zone and weight.'],
+  ['fuel','Fuel surcharge band','Fuel surcharge as a percent of base charge vs your contracted band (floor .. cap). Above the cap = overcharge; below the floor = possible mis-rate. Dollar variance is measured to the nearest band edge.'],
+  ['addItems','Additional items fee','Per order: units over the free threshold \u00d7 the per-unit fee, recomputed and compared to the billed additional-items fee.'],
+  ['arithmetic','Line arithmetic','Base charge plus all fees and surcharges must equal the billed total.'],
+  ['offCard','Off-card lines','Shipping lines whose zone or weight falls outside the rate card (e.g. above 150 lb).'],
+  ['billedNotInExport','Billed but not in Shopify export','Billed orders missing from the uploaded Shopify export, auto-classified by order range.'],
+  ['exportNotBilled','Fulfilled but not billed','Non-cancelled Shopify orders absent from the bill, auto-classified by order range.'],
+  ['duplicates','Duplicate orders','Shipping (FF_STANDARD) orders billed on more than one shipment line. Non-shipping charges are excluded.'],
+  ['otherCharges','Other (non-shipping) charges','Receiving, rework, storage and other non-FF_STANDARD lines — surfaced for visibility, not rate-verified (storage excluded by choice). Informational, not counted as issues.'],
+];
+
+function buildRateGrid(panel, card){
+  const head = '<thead><tr><th>Wt &le; (lb)</th>' + CARD_ZONES.map(z=>`<th>Z${z}</th>`).join('') + '</tr></thead>';
+  const body = '<tbody>' + card.map((row,ri) =>
+    '<tr><td class="wlabel">'+row[0]+'</td>' + CARD_ZONES.map((z,zi) =>
+      `<td><input type="number" step="0.01" min="0" data-r="${ri}" data-c="${zi+1}" value="${row[zi+1]}"></td>`).join('') + '</tr>'
+  ).join('') + '</tbody>';
+  panel.querySelector('#rateGrid').innerHTML = head + body;
+}
+function settingsRender(settings, panel){
+  panel.querySelector('#setTol').value = settings.tolerance;
+  panel.querySelector('#setFuelMin').value = settings.fuelMinPct;
+  panel.querySelector('#setFuelMax').value = settings.fuelMaxPct;
+  panel.querySelector('#setAddFee').value = settings.addItemFee;
+  panel.querySelector('#setFreeQty').value = settings.addItemFreeQty;
+  buildRateGrid(panel, settings.rateCard || DEFAULT_RATE_CARD);
+  panel.querySelector('#btnResetCard').onclick = () => buildRateGrid(panel, DEFAULT_RATE_CARD);
+  panel.querySelector('#checkToggles').innerHTML = CHECK_META.map(([key,title]) =>
+    `<label><input type="checkbox" data-check="${key}" ${settings.enabled[key]?'checked':''}>${title}</label>`).join('');
+}
+function settingsReadForm(panel, settings){
+  // rate card: reconstruct from grid, preserving fixed weight thresholds; block invalid cells
+  const newCard = (settings.rateCard || DEFAULT_RATE_CARD).map(r => r.slice());
+  let bad = null;
+  panel.querySelectorAll('#rateGrid input').forEach(inp => {
+    const ri = +inp.dataset.r, ci = +inp.dataset.c, v = Number(inp.value);
+    if(String(inp.value).trim() === '' || isNaN(v) || v < 0){ if(!bad) bad = { ri, ci }; return; }
+    newCard[ri][ci] = v;
+  });
+  if(bad){
+    const eb = document.getElementById('errBox');
+    eb.textContent = `Rate card has an invalid value (weight \u2264 ${newCard[bad.ri][0]} lb, zone ${CARD_ZONES[bad.ci-1]}). Enter a non-negative number before saving.`;
+    eb.style.display = 'block';
+    return false;
+  }
+  settings.rateCard = newCard;
+  settings.tolerance = Number(panel.querySelector('#setTol').value)||0;
+  settings.fuelMinPct = Number(panel.querySelector('#setFuelMin').value)||0;
+  settings.fuelMaxPct = Number(panel.querySelector('#setFuelMax').value)||0;
+  settings.addItemFee = Number(panel.querySelector('#setAddFee').value)||0;
+  settings.addItemFreeQty = Number(panel.querySelector('#setFreeQty').value)||0;
+  for(const cb of panel.querySelectorAll('#checkToggles input'))
+    settings.enabled[cb.dataset.check] = cb.checked;
+  return true;
+}
+
+function dashboard(t, c, fmt){
+  const len = k => Array.isArray(c[k]) ? c[k].length : 0;
+  return [
+    { label:'Bill lines', value:fmt(t.billLines), note: t.reportRows ? fmt(t.reportRows)+' Shopify orders' : 'no Shopify export' },
+    { label:'Billed total', value:'$'+fmt(t.billedTotal), note:`base $${fmt(t.billedCharge)} · fuel $${fmt(t.fuelTotal)}` },
+    { label:'Rate variance', value:'$'+fmt(t.rateNet), note:`over $${fmt(t.rateOver)} (${t.rateOverN}) · under $${fmt(t.rateUnder)} (${t.rateUnderN})` },
+    { label:'Fuel variance', value:'$'+fmt(t.fuelNet), note:`over $${fmt(t.fuelOver)} (${t.fuelOverN}) · under $${fmt(t.fuelUnder)} (${t.fuelUnderN}) · band ${t.fuelBand}` },
+    { label:'Lines flagged', value: len('rate')+len('fuel')+len('addItems')+len('arithmetic')+len('offCard')+len('duplicates'), note:'rate, fuel, items, arithmetic, off-card, duplicates (other charges excluded)' },
+  ];
+}
+function summaryRows(t, s){
+  return [
+    { Item:'Bill lines', Value:t.billLines }, { Item:'Shopify orders', Value:t.reportRows },
+    { Item:'Billed base charge (USD)', Value:t.billedCharge },
+    { Item:'Billed fuel surcharge (USD)', Value:t.fuelTotal },
+    { Item:'Billed total (USD)', Value:t.billedTotal },
+    { Item:'Rate variance — over card (USD)', Value:t.rateOver },
+    { Item:'Rate variance — under card (USD)', Value:t.rateUnder },
+    { Item:'Rate variance — net (USD)', Value:t.rateNet },
+    { Item:'Fuel variance — over band (USD)', Value:t.fuelOver },
+    { Item:'Fuel variance — under band (USD)', Value:t.fuelUnder },
+    { Item:'Fuel variance — net (USD)', Value:t.fuelNet },
+    { Item:'Other (non-shipping) charges (USD)', Value:t.otherCharges },
+    { Item:'Rules', Value:`Rate tol $${s.tolerance} · Fuel band ${s.fuelMinPct}–${s.fuelMaxPct}% · Add-item $${s.addItemFee}/unit over ${s.addItemFreeQty}/order` },
+  ];
+}
+
+if(typeof document !== 'undefined' && typeof VK !== 'undefined'){
+  VK.initApp({
+    settingsKey: 'fulfyldVerifySettings_v1',
+    defaults: DEFAULT_SETTINGS,
+    locale: 'en-US',
+    exportFilename: 'Fulfyld_Bill_Verification.xlsx',
+    noFileLabel: 'Not run — no Shopify export',
+    uploads: [
+      { dropId:'dropBill', fileId:'fileBill', key:'bill', read:'text', parser:parseBill },
+      { dropId:'dropOrders', fileId:'fileOrders', key:'orders', read:'text', parser:parseOrders },
+    ],
+    runReady: state => !!state.bill,
+    verify: (state, settings) => runVerification(state.bill, state.orders, settings),
+    checkMeta: CHECK_META,
+    dashboard, summaryRows,
+    settingsForm: { render: settingsRender, read: settingsReadForm },
+  });
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3PL Bill Verification · Purest Nest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=EB+Garamond:wght@500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#FDF8F2;--teal:#004C4F;--moss:#375428;
+  --teal-light:rgba(0,76,79,0.07);--border:rgba(0,76,79,0.12);
+  --shadow:rgba(43,41,37,0.08);--text:#2B2925;--info:#6B6560;--radius:14px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.wrap{max-width:860px;margin:0 auto;padding:48px 20px 40px}
+.brand{font-family:'EB Garamond',serif;font-size:15px;font-weight:600;color:var(--teal);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px}
+h1{font-family:'EB Garamond',serif;font-size:34px;font-weight:500;color:var(--teal);margin-bottom:10px}
+.sub{font-size:14px;color:var(--info);line-height:1.65;max-width:640px;margin-bottom:34px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.tool{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:22px 22px 20px;box-shadow:0 1px 4px var(--shadow);display:flex;flex-direction:column;text-decoration:none;color:var(--text);transition:box-shadow .15s,transform .15s}
+.tool:hover{box-shadow:0 6px 18px rgba(0,76,79,0.14);transform:translateY(-2px)}
+.tool-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:2px}
+.tool h2{font-family:'EB Garamond',serif;font-size:20px;font-weight:500;color:var(--teal)}
+.ver{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--info);border:1px solid var(--border);border-radius:99px;padding:2px 9px;white-space:nowrap}
+.market{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--moss);margin-bottom:10px}
+.tool p{font-size:12.5px;color:var(--info);line-height:1.6;flex:1}
+.go{margin-top:16px;font-size:11.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
+.tool:hover .go{color:var(--moss)}
+.note{margin-top:28px;background:var(--teal-light);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;font-size:12.5px;color:var(--info);line-height:1.65}
+.note strong{color:var(--teal)}
+.footer{text-align:center;margin-top:34px;font-size:11px;color:var(--info);letter-spacing:.03em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">Purest Nest · Logistics &amp; Ops</div>
+  <h1>3PL Bill Verification</h1>
+  <p class="sub">Automated verification of 3PL and fulfillment invoices against contracted rate cards — line arithmetic, rate variance, fuel surcharges, coverage against order exports, and duplicate charges. Everything runs in your browser; no bill data leaves your machine.</p>
+
+  <div class="grid">
+    <a class="tool" href="./fbs/">
+      <div class="tool-head"><h2>FBS</h2><span class="ver">v2.1.0</span></div>
+      <div class="market">Shopee FBS · Malaysia · RM</div>
+      <p>Fulfilment fees vs tier card, tax, tier assignment by dimensions, storage recompute with aging cross-check, quantity, coverage, and reconciliation.</p>
+      <div class="go">Open tool →</div>
+    </a>
+    <a class="tool" href="./invenco/">
+      <div class="tool-head"><h2>Invenco</h2><span class="ver">v1.9.0</span></div>
+      <div class="market">Fulfillment Centre · Australia · AUD</div>
+      <p>Fulfillment fees vs contracted card, packaging, picking vs order export, Standard &amp; Express shipping vs zone × weight card + fuel band, duplicates, reconciliation.</p>
+      <div class="go">Open tool →</div>
+    </a>
+    <a class="tool" href="./fulfyld/">
+      <div class="tool-head"><h2>Fulfyld</h2><span class="ver">v1.6.0</span></div>
+      <div class="market">Fulfillment Centre · United States · USD</div>
+      <p>Shipping vs FF_STANDARD zone × weight card with two-sided variance, fuel band, additional-items fee, arithmetic, coverage, duplicates, and non-shipping surfacing.</p>
+      <div class="go">Open tool →</div>
+    </a>
+  </div>
+
+  <div class="note"><strong>First time on this browser?</strong> Each tool starts unconfigured — open it, go to Settings → Import settings, and load the matching settings file from the team's internal drive (rate cards are kept off this site by design). This is a one-time step per browser; settings persist afterwards.</div>
+
+  <p class="footer">Purest Nest Pte Ltd · Internal Operations Tool</p>
+</div>
+</body>
+</html>
