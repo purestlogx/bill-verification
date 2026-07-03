@@ -99,7 +99,7 @@ td{border-bottom:1px solid var(--border);padding:6px 8px;vertical-align:top}
 </head>
 <body>
 <div class="wrap">
-  <h1>FBS MY Invoice Verification<span class="version">v2.2.2</span></h1>
+  <h1>FBS MY Invoice Verification<span class="version">v2.2.3</span></h1>
   <div class="sub">Verifies the FBS monthly charging report against your Shopee order export — fulfilment fees, coverage, quantities, storage, and summary reconciliation.</div>
 
   <div class="uploads">
@@ -705,14 +705,20 @@ function runVerification(charging, ordersById, prevOrdersById, aging, settings){
   // 5. Coverage A
   if(on.chargedNotInExport){
     const covA = [];
+    // total charged units per order SN (an order can span several charge lines)
+    const chargedQtyBySn = new Map();
+    for(const arr of byKey.values()){ const l = arr[0]; chargedQtyBySn.set(l.sn, (chargedQtyBySn.get(l.sn) || 0) + l.qty); }
     for(const l of charged){
       if(ordersById.has(l.sn)) continue;
       let cls; const sd = snDate(l.sn);
       if(prevOrdersById && prevOrdersById.has(l.sn)){
         const p = prevOrdersById.get(l.sn);
-        cls = p.fbs === 'Yes' ? 'Previous-month order — verified in prior export' : 'Found in prior export but FBS Order = No — investigate';
+        if(p.fbs === 'Yes' && p.qty === chargedQtyBySn.get(l.sn)) continue; // fully verified in prior export (order, FBS flag, quantity) — a pass, not a flag
+        cls = p.fbs !== 'Yes'
+          ? 'Found in prior export but FBS Order = No — investigate'
+          : `Found in prior export but quantity differs (export ${p.qty} vs charged ${chargedQtyBySn.get(l.sn)}) — investigate`;
       } else if(sd && charging.periodStart && sd < charging.periodStart){
-        cls = 'Previous-month order (cross-month) — verify against prior export';
+        cls = 'Previous-month order (cross-month) — upload the prior export to verify';
       } else cls = 'Not found in any export — investigate with FBS';
       covA.push({ 'Order SN':l.sn, 'Order Created (from SN)':sd, 'Sold Date':l.soldDate,
         'MTSKU ID':l.mtsku, 'Qty':l.qty, 'Fee (RM)':l.fee, 'Classification':cls });
@@ -835,7 +841,7 @@ const CHECK_META = [
   ['rate','Rate accuracy','Charged fee must equal tier rate \u00d7 quantity on every line.'],
   ['tax','Tax accuracy','After-tax fee must equal fee \u00d7 (1 + tax rate) on every line.'],
   ['tier','Tier accuracy','Tier recomputed from longest side and chargeable weight against the rate card.'],
-  ['chargedNotInExport','Charged but not in order export','Charged order lines with no matching order in the uploaded export, auto-classified.'],
+  ['chargedNotInExport','Charged but not in order export','Charged order lines with no matching order in the current export. Lines fully verified in the prior-month export (order present, FBS = Yes, quantity matches) pass silently; only lines that cannot be verified are flagged.'],
   ['expectedNotCharged','FBS orders not charged','FBS = Yes, non-cancelled orders absent from the charging report, auto-classified.'],
   ['qty','Quantity match','Units charged per order vs units in the order export.'],
   ['reconciliation','Summary reconciliation','Detail sheet totals vs the Sub Fee Summary, for fulfilment and storage.'],
