@@ -74,6 +74,21 @@ td{border-bottom:1px solid var(--border);padding:6px 8px;vertical-align:top}
 #rateGrid td.wlabel{font-weight:700;text-align:right;color:var(--info);font-variant-numeric:tabular-nums;white-space:nowrap}
 #rateGrid input{width:60px;font-size:12px;text-align:right;border:1px solid var(--border);border-radius:6px;padding:3px 4px;background:#fff;color:var(--teal)}
 
+/* ---- login gate (Firebase) ---- */
+.login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;z-index:50}
+.login-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:36px 32px;width:100%;max-width:380px;box-shadow:0 4px 24px var(--shadow);text-align:center}
+.login-brand{font-family:'EB Garamond',serif;font-size:22px;font-weight:600;color:var(--teal);margin-bottom:4px}
+.login-sub{font-size:11.5px;color:var(--info);margin-bottom:28px;letter-spacing:.04em;text-transform:uppercase}
+.login-label{display:block;text-align:left;font-size:11px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+.login-input{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13.5px;color:var(--teal);font-family:'DM Sans',sans-serif;outline:none;margin-bottom:14px}
+.login-input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(0,76,79,0.1)}
+.btn-login{width:100%;background:var(--teal);color:#fff;border:none;padding:12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;cursor:pointer;transition:background .18s;margin-top:4px}
+.btn-login:hover:not(:disabled){background:var(--moss)}
+.btn-login:disabled{opacity:.5;cursor:not-allowed}
+.login-err{font-size:12px;color:var(--crit);margin-top:10px;min-height:18px}
+.authbar{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:6px}
+.auth-user{font-size:12px;color:var(--info)}
+
 #tierTable{width:100%;border-collapse:collapse;margin-top:8px}
 #tierTable th{text-align:left;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--info);border-bottom:1px solid var(--border);padding:6px 6px}
 #tierTable td{padding:4px 6px}
@@ -84,7 +99,7 @@ td{border-bottom:1px solid var(--border);padding:6px 8px;vertical-align:top}
 </head>
 <body>
 <div class="wrap">
-  <h1>FBS MY Invoice Verification<span class="version">v2.1.0</span></h1>
+  <h1>FBS MY Invoice Verification<span class="version">v2.2.0</span></h1>
   <div class="sub">Verifies the FBS monthly charging report against your Shopee order export — fulfilment fees, coverage, quantities, storage, and summary reconciliation.</div>
 
   <div class="uploads">
@@ -226,6 +241,8 @@ const VK = (function(){
     const fmt = makeFmt(config.locale || 'en-US');
     const state = { result:null };
     let settings = loadSettings(config.settingsKey, config.defaults);
+    let remotePush = null;   // set by the Firebase gate; called after any settings save
+    function syncRemote(){ if(remotePush) remotePush(settings); }
 
     const $ = id => document.getElementById(id);
     const errBox = $('errBox');
@@ -269,6 +286,7 @@ const VK = (function(){
     $('btnSaveSettings').addEventListener('click', () => {
       if(!config.settingsForm.read(panel, settings)) return;
       saveSettings(config.settingsKey, settings);
+      syncRemote();
       hideError();
       panel.style.display = 'none';
       if(state.result && config.runReady(state)){ state.result = config.verify(state, settings); render(state.result); }
@@ -276,6 +294,7 @@ const VK = (function(){
     $('btnResetSettings').addEventListener('click', () => {
       settings = JSON.parse(JSON.stringify(config.defaults));
       saveSettings(config.settingsKey, settings);
+      syncRemote();
       config.settingsForm.render(settings, panel);
     });
     $('btnCloseSettings').addEventListener('click', () => { panel.style.display = 'none'; });
@@ -312,6 +331,7 @@ const VK = (function(){
             const base = JSON.parse(JSON.stringify(config.defaults));
             settings = { ...base, ...s, enabled: { ...(base.enabled||{}), ...(s.enabled||{}) } };
             saveSettings(config.settingsKey, settings);
+            syncRemote();
             config.settingsForm.render(settings, panel);
             msg.textContent = '\u2713 Settings imported from ' + f.name;
             setTimeout(() => { msg.textContent = ''; }, 4000);
@@ -379,6 +399,107 @@ const VK = (function(){
       }
       XLSX.writeFile(wb, config.exportFilename);
     });
+
+    // ---- optional Firebase gate: login required, settings synced to Firestore ----
+    // config.firebase = { config: {...firebase web config}, doc: 'toolname' }
+    // Settings live in Firestore collection 'verification_settings', one doc per tool,
+    // readable/writable only by authenticated users (see README for the security rules).
+    if(config.firebase){
+      const wrap = document.querySelector('.wrap');
+      wrap.style.display = 'none';
+
+      const login = document.createElement('div');
+      login.className = 'login-screen'; login.id = 'loginScreen';
+      login.innerHTML = `
+        <div class="login-card">
+          <div class="login-brand">Purest Nest</div>
+          <div class="login-sub">${document.title || 'Bill Verification'}</div>
+          <label class="login-label" for="liEmail">Email</label>
+          <input class="login-input" id="liEmail" type="email" placeholder="you@thepurestgroup.com" autocomplete="email">
+          <label class="login-label" for="liPw">Password</label>
+          <input class="login-input" id="liPw" type="password" placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" autocomplete="current-password">
+          <button class="btn-login" id="liBtn" type="button">Sign in</button>
+          <div class="login-err" id="liErr"></div>
+        </div>`;
+      document.body.appendChild(login);
+
+      function loadScript(src){ return new Promise((ok, bad) => {
+        const el = document.createElement('script'); el.src = src;
+        el.onload = ok; el.onerror = () => bad(new Error('failed: ' + src));
+        document.head.appendChild(el);
+      }); }
+
+      const SDK = 'https://www.gstatic.com/firebasejs/10.12.2/firebase-';
+      const ready = (typeof firebase !== 'undefined')
+        ? Promise.resolve()
+        : loadScript(SDK+'app-compat.js').then(()=>loadScript(SDK+'auth-compat.js')).then(()=>loadScript(SDK+'firestore-compat.js'));
+
+      ready.then(() => {
+        if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(config.firebase.config);
+        const auth = firebase.auth();
+        const doc = firebase.firestore().collection('verification_settings').doc(config.firebase.doc);
+        const liErr = $('liErr'), liBtn = $('liBtn');
+
+        function doLogin(){
+          const email = $('liEmail').value.trim(), pw = $('liPw').value;
+          if(!email || !pw){ liErr.textContent = 'Please enter email and password.'; return; }
+          liBtn.disabled = true; liBtn.textContent = 'Signing in\u2026'; liErr.textContent = '';
+          auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
+            .then(() => auth.signInWithEmailAndPassword(email, pw))
+            .catch(e => {
+              liErr.textContent = (e && (e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found'))
+                ? 'Incorrect email or password.' : 'Sign in failed. Please try again.';
+              liBtn.disabled = false; liBtn.textContent = 'Sign in';
+            });
+        }
+        liBtn.addEventListener('click', doLogin);
+        $('liPw').addEventListener('keydown', e => { if(e.key === 'Enter') doLogin(); });
+
+        // 2h inactivity sign-out (same policy as the MY Order Processing Tool)
+        const INACT = 2*60*60*1000; let inactT = null;
+        const bump = () => { if(inactT) clearTimeout(inactT); inactT = setTimeout(() => auth.signOut(), INACT); };
+        const EVS = ['mousemove','keydown','mousedown','touchstart','scroll','click'];
+        function watch(on){ EVS.forEach(ev => on ? document.addEventListener(ev, bump, {passive:true}) : document.removeEventListener(ev, bump)); if(on) bump(); else if(inactT){ clearTimeout(inactT); inactT = null; } }
+
+        let bar = null;
+        auth.onAuthStateChanged(user => {
+          if(user){
+            remotePush = s => doc.set(JSON.parse(JSON.stringify(s)))
+              .then(() => setIoMsg('\u2713 Saved and synced'))
+              .catch(() => setIoMsg('Saved locally \u2014 sync failed (will not persist for the team)'));
+            doc.get().then(snap => {
+              if(snap.exists){
+                const base = JSON.parse(JSON.stringify(config.defaults)), r = snap.data();
+                settings = { ...base, ...r, enabled: { ...(base.enabled||{}), ...(r.enabled||{}) } };
+                saveSettings(config.settingsKey, settings);   // local cache of the synced copy
+              }
+              showTool(user);
+            }).catch(() => { setIoMsg('Firebase unreachable \u2014 using local settings copy'); showTool(user); });
+          }else{
+            remotePush = null; watch(false);
+            if(bar){ bar.remove(); bar = null; }
+            wrap.style.display = 'none'; login.style.display = 'flex';
+            liBtn.disabled = false; liBtn.textContent = 'Sign in';
+          }
+        });
+
+        function setIoMsg(txt){ const m = $('settingsIoMsg'); if(m){ m.textContent = txt; setTimeout(() => { m.textContent = ''; }, 4000); } }
+        function showTool(user){
+          login.style.display = 'none'; wrap.style.display = '';
+          if(!bar){
+            bar = document.createElement('div'); bar.className = 'authbar';
+            bar.innerHTML = `<span class="auth-user"></span><button type="button" class="ghost auth-out">Sign out</button>`;
+            wrap.insertBefore(bar, wrap.firstChild);
+            bar.querySelector('.auth-out').addEventListener('click', () => auth.signOut());
+          }
+          bar.querySelector('.auth-user').textContent = user.email || '';
+          watch(true);
+        }
+      }).catch(() => {
+        const liErr = document.getElementById('liErr');
+        if(liErr) liErr.textContent = 'Cannot reach Firebase \u2014 check your connection and reload.';
+      });
+    }
   }
 
   return { num, makeFmt, parseCSV, csvToObjects, loadSettings, saveSettings, initApp };
@@ -783,6 +904,12 @@ function summaryRows(t, s){
 
 if(typeof document !== 'undefined' && typeof VK !== 'undefined'){
   VK.initApp({
+    firebase: {
+      config: { apiKey:"AIzaSyAzibrJ1TCtv6pojhBQYEvxqKtLsWMabs4", authDomain:"purest-sync-tool.firebaseapp.com",
+                projectId:"purest-sync-tool", storageBucket:"purest-sync-tool.firebasestorage.app",
+                messagingSenderId:"634850390349", appId:"1:634850390349:web:6fd3ba4964e2152e55c704" },
+      doc: 'fbs',
+    },
     settingsKey: 'fbsVerifySettings_v1',
     defaults: DEFAULT_SETTINGS,
     locale: 'en-MY',
