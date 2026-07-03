@@ -108,7 +108,7 @@ td{border-bottom:1px solid var(--border);padding:6px 8px;vertical-align:top}
 </head>
 <body>
 <div class="wrap">
-  <h1>Invenco Fulfillment Bill Verification<span class="version">v1.10.0</span></h1>
+  <h1>Invenco Fulfillment Bill Verification<span class="version">v1.10.1</span></h1>
   <div class="sub">Verifies the Invenco billing detail (AUD) — line arithmetic, fulfillment fees against your contracted (+4.2%) rate card, packaging, duplicate charges, grand-total reconciliation, and domestic Standard &amp; Express shipping against the zone × weight card plus the fuel-surcharge band. Shipping weight is estimated from SKU weights, so it is approximate — in-band lines pass with their exact surcharge %, lines below the band are flagged Under card and above it Over card. Storage is excluded by choice.</div>
 
   <div class="uploads">
@@ -487,12 +487,19 @@ const VK = (function(){
         let bar = null;
         auth.onAuthStateChanged(user => {
           if(user){
-            remotePush = s => doc.set(JSON.parse(JSON.stringify(s)))
-              .then(() => setIoMsg('\u2713 Saved and synced'))
-              .catch(() => setIoMsg('Saved locally \u2014 sync failed (will not persist for the team)'));
+            remotePush = s => doc.set({ payload: JSON.stringify(s), updatedAt: new Date().toISOString(), updatedBy: user.email || '' })
+              .then(() => { hideError(); setIoMsg('\u2713 Saved and synced'); })
+              .catch(err => {
+                setIoMsg('Saved locally \u2014 sync failed');
+                showError('Settings saved on this browser but did NOT sync to Firebase (' + (err && err.code ? err.code : 'error') + '). '
+                  + 'If this says permission-denied, add the verification_settings rule in Firestore Rules and try again.');
+              });
             doc.get().then(snap => {
               if(snap.exists){
-                const base = JSON.parse(JSON.stringify(config.defaults)), r = snap.data();
+                const base = JSON.parse(JSON.stringify(config.defaults));
+                const raw = snap.data();
+                let r = raw;
+                if(typeof raw.payload === 'string'){ try{ r = JSON.parse(raw.payload); }catch(e){ r = {}; } }
                 settings = { ...base, ...r, enabled: { ...(base.enabled||{}), ...(r.enabled||{}) } };
                 saveSettings(config.settingsKey, settings);   // local cache of the synced copy
               }
