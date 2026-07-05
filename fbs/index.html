@@ -88,6 +88,10 @@ td{border-bottom:1px solid var(--border);padding:6px 8px;vertical-align:top}
 .login-err{font-size:12px;color:var(--crit);margin-top:10px;min-height:18px}
 .authbar{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:6px}
 .auth-user{font-size:12px;color:var(--info)}
+.auth-home{margin-right:auto;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--teal);text-decoration:none}
+.auth-home:hover{color:var(--moss)}
+.login-home{display:inline-block;margin-top:14px;font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--teal);text-decoration:none}
+.login-home:hover{color:var(--moss)}
 
 #tierTable{width:100%;border-collapse:collapse;margin-top:8px}
 #tierTable th{text-align:left;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--info);border-bottom:1px solid var(--border);padding:6px 6px}
@@ -99,7 +103,7 @@ td{border-bottom:1px solid var(--border);padding:6px 8px;vertical-align:top}
 </head>
 <body>
 <div class="wrap">
-  <h1>FBS MY Invoice Verification<span class="version">v2.2.3</span></h1>
+  <h1>FBS MY Invoice Verification<span class="version">v2.2.4</span></h1>
   <div class="sub">Verifies the FBS monthly charging report against your Shopee order export — fulfilment fees, coverage, quantities, storage, and summary reconciliation.</div>
 
   <div class="uploads">
@@ -420,6 +424,7 @@ const VK = (function(){
           <input class="login-input" id="liPw" type="password" placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" autocomplete="current-password">
           <button class="btn-login" id="liBtn" type="button">Sign in</button>
           <div class="login-err" id="liErr"></div>
+          <a class="login-home" href="../">\u2190 All tools</a>
         </div>`;
       document.body.appendChild(login);
 
@@ -495,7 +500,7 @@ const VK = (function(){
           login.style.display = 'none'; wrap.style.display = '';
           if(!bar){
             bar = document.createElement('div'); bar.className = 'authbar';
-            bar.innerHTML = `<span class="auth-user"></span><button type="button" class="ghost auth-out">Sign out</button>`;
+            bar.innerHTML = `<a class="auth-home" href="../">\u2190 All tools</a><span class="auth-user"></span><button type="button" class="ghost auth-out">Sign out</button>`;
             wrap.insertBefore(bar, wrap.firstChild);
             bar.querySelector('.auth-out').addEventListener('click', () => auth.signOut());
           }
