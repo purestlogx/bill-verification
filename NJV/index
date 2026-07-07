@@ -1,1 +1,1081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NJV Fulfilment Bill Verification</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=EB+Garamond:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FDF8F2; --teal:#004C4F; --moss:#375428;
+  --border:rgba(0,76,79,0.12); --shadow:rgba(43,41,37,0.08);
+  --ok:#375428; --flag:#9A4A1E; --info:#5B6B6C; --crit:#8B1E1E;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--teal);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.5;padding:32px 20px 80px}
+.wrap{max-width:1080px;margin:0 auto}
+h1{font-family:'EB Garamond',serif;font-weight:600;font-size:30px;letter-spacing:.01em}
+.sub{color:var(--info);margin-top:4px;font-size:13px}
+.version{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--info);border:1px solid var(--border);border-radius:99px;padding:3px 10px;vertical-align:middle;margin-left:10px}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 2px 8px var(--shadow);padding:20px;margin-top:18px}
+.uploads{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:18px}
+.drop{background:#fff;border:1.5px dashed var(--border);border-radius:14px;padding:18px;cursor:pointer;transition:border-color .15s}
+.drop:hover{border-color:var(--teal)}
+.drop h3{font-family:'EB Garamond',serif;font-size:17px;font-weight:600}
+.drop p{color:var(--info);font-size:12px;margin-top:2px}
+.drop .file{margin-top:8px;font-size:12px;font-weight:700;color:var(--moss);word-break:break-all}
+.drop.loaded{border-style:solid;border-color:var(--moss)}
+.opt{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--info)}
+button{font-family:'DM Sans',sans-serif;text-transform:uppercase;letter-spacing:.12em;font-weight:700;font-size:12px;border-radius:99px;padding:12px 26px;border:1px solid var(--teal);cursor:pointer;transition:all .15s;background:transparent;color:var(--teal)}
+.primary{background:var(--teal);color:#fff}
+.primary:hover{background:var(--moss);border-color:var(--moss)}
+.primary:disabled{opacity:.4;cursor:not-allowed}
+.ghost:hover{border-color:var(--moss);color:var(--moss)}
+.small-btn{padding:7px 16px;font-size:11px}
+.actions{margin-top:22px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:18px}
+.metric{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px 18px;box-shadow:0 2px 8px var(--shadow)}
+.metric .label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--info)}
+.metric .value{font-family:'EB Garamond',serif;font-size:28px;font-weight:600;margin-top:4px}
+.metric .note{font-size:12px;color:var(--info)}
+.check-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.check-head h2{font-family:'EB Garamond',serif;font-size:19px;font-weight:600;flex:1}
+.pill{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;border-radius:99px;padding:4px 12px}
+.pill.ok{background:rgba(55,84,40,.1);color:var(--ok)}
+.pill.flag{background:rgba(154,74,30,.1);color:var(--flag)}
+.pill.off{background:rgba(91,107,108,.12);color:var(--info)}
+.pill.info{background:rgba(0,76,79,.08);color:var(--teal)}
+.check p.desc{color:var(--info);font-size:13px;margin-top:6px}
+table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12.5px}
+th{text-align:left;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--info);border-bottom:1px solid var(--border);padding:6px 8px}
+td{border-bottom:1px solid var(--border);padding:6px 8px;vertical-align:top}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.trunc{color:var(--info);font-size:12px;margin-top:8px;font-style:italic}
+.err{background:rgba(154,74,30,.08);border:1px solid rgba(154,74,30,.25);color:var(--flag);border-radius:14px;padding:14px 18px;margin-top:18px;display:none}
+#results{display:none}
+#settingsPanel{display:none}
+#settingsPanel h2{font-family:'EB Garamond',serif;font-size:21px;font-weight:600}
+#settingsPanel h3{font-family:'EB Garamond',serif;font-size:16px;font-weight:600;margin:18px 0 6px}
+#settingsPanel .hint{color:var(--info);font-size:12px}
+#settingsPanel input[type=number]{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--teal);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 8px;width:100%;text-align:right}
+.gen-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:8px}
+.gen-grid label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--info);display:block;margin-bottom:4px}
+.toggles{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:6px 18px;margin-top:8px}
+.toggles label{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+.toggles input{accent-color:var(--teal);width:15px;height:15px}
+.settings-actions{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+.cardnote{font-size:12px;color:var(--info);margin-top:8px}
+#rateGridWrap{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:10px;margin-top:4px}
+#rateGrid{border-collapse:collapse;font-size:12px;width:100%}
+#rateGrid th{position:sticky;top:0;background:var(--bg);z-index:1;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--info);padding:5px 4px;border-bottom:1px solid var(--border)}
+#rateGrid td{padding:2px 4px;border-bottom:1px solid var(--border)}
+#rateGrid td.wlabel{font-weight:700;text-align:right;color:var(--info);font-variant-numeric:tabular-nums;white-space:nowrap}
+#rateGrid input{width:60px;font-size:12px;text-align:right;border:1px solid var(--border);border-radius:6px;padding:3px 4px;background:#fff;color:var(--teal)}
 
+/* ---- login gate (Firebase) ---- */
+.login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;z-index:50}
+.login-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:36px 32px;width:100%;max-width:380px;box-shadow:0 4px 24px var(--shadow);text-align:center}
+.login-brand{font-family:'EB Garamond',serif;font-size:22px;font-weight:600;color:var(--teal);margin-bottom:4px}
+.login-sub{font-size:11.5px;color:var(--info);margin-bottom:28px;letter-spacing:.04em;text-transform:uppercase}
+.login-label{display:block;text-align:left;font-size:11px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+.login-input{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13.5px;color:var(--teal);font-family:'DM Sans',sans-serif;outline:none;margin-bottom:14px}
+.login-input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(0,76,79,0.1)}
+.btn-login{width:100%;background:var(--teal);color:#fff;border:none;padding:12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;cursor:pointer;transition:background .18s;margin-top:4px}
+.btn-login:hover:not(:disabled){background:var(--moss)}
+.btn-login:disabled{opacity:.5;cursor:not-allowed}
+.login-err{font-size:12px;color:var(--crit);margin-top:10px;min-height:18px}
+.authbar{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:6px}
+.auth-user{font-size:12px;color:var(--info)}
+.auth-home{margin-right:auto;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--teal);text-decoration:none}
+.auth-home:hover{color:var(--moss)}
+.login-home{display:inline-block;margin-top:14px;font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--teal);text-decoration:none}
+.login-home:hover{color:var(--moss)}
+
+
+/* ---- NJV-specific settings styling ---- */
+#outbTable,#inbTable,#vasTable{width:100%;border-collapse:collapse;margin-top:8px}
+#outbTable th,#inbTable th,#vasTable th{text-align:left;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--info);border-bottom:1px solid var(--border);padding:6px 6px}
+#outbTable td,#inbTable td,#vasTable td{padding:4px 6px}
+#outbTable input,#inbTable input,#vasTable input{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--teal);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 8px;width:100%}
+#outbTable input.num,#inbTable input.num,#vasTable input.num{text-align:right}
+.row-x{background:transparent;border:none;color:var(--flag);font-size:15px;cursor:pointer;padding:2px 6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>NJV Fulfilment Bill Verification<span class="version">v1.2.0</span></h1>
+  <div class="sub">Verifies the Ninja Van MY fulfilment bill (RM) — invoice reconciliation against the inbound / outbound / storage / VAS detail sheets, outbound and inbound charges against the per-item CBM tier card (mixed-size parcels verified via tier-mix feasibility), daily storage recompute, VAS rates against the card, duplicates, and order coverage against your marketplace exports. Manual/VAS-type outbound lines and consumables not on the card are surfaced for review.</div>
+
+  <div class="uploads">
+    <div class="drop" id="dropBill">
+      <h3>NJV Bill</h3>
+      <p>THE_PUREST_CO_ FF-MYNV… .xlsx (multi-sheet)</p>
+      <div class="file" id="fileBill">No file selected</div>
+      <input type="file" accept=".xlsx,.xls" hidden>
+    </div>
+    <div class="drop" id="dropShopifySG">
+      <h3>Shopify (SG) Export <span class="opt">optional</span></h3>
+      <p>orders_export.csv — raw download, matched on Name + Id</p>
+      <div class="file" id="fileShopifySG">No file selected</div>
+      <input type="file" accept=".csv" hidden>
+    </div>
+    <div class="drop" id="dropShopifyMY">
+      <h3>Shopify (MY) Export <span class="opt">optional</span></h3>
+      <p>orders_export.csv — raw download, matched on Name + Id</p>
+      <div class="file" id="fileShopifyMY">No file selected</div>
+      <input type="file" accept=".csv" hidden>
+    </div>
+    <div class="drop" id="dropShopee">
+      <h3>Shopee Export <span class="opt">optional</span></h3>
+      <p>Shopee order export .xlsx — matched on Order ID</p>
+      <div class="file" id="fileShopee">No file selected</div>
+      <input type="file" accept=".xlsx,.xls" hidden>
+    </div>
+    <div class="drop" id="dropTiktok">
+      <h3>TikTok Export <span class="opt">optional</span></h3>
+      <p>TTS OrderSKUList .xlsx — matched on Order ID</p>
+      <div class="file" id="fileTiktok">No file selected</div>
+      <input type="file" accept=".xlsx,.xls" hidden>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="primary" id="btnRun" disabled>Run verification</button>
+    <button class="ghost" id="btnSettings">Settings</button>
+    <button class="ghost" id="btnExport" style="display:none">Export findings to Excel</button>
+  </div>
+
+  <div class="card" id="settingsPanel">
+    <h2>Verification rules</h2>
+    <p class="hint">Rules apply on the next run. The contracted rates are not stored in this page — import your settings file once, and they sync to the team via Firebase. Lazada orders are counted but not coverage-checked until its export format is added. Shopify exports must be raw downloads — a CSV opened and re-saved in Excel corrupts the Id column (the tool detects and reports this).</p>
+
+    <h3>General</h3>
+    <div class="gen-grid">
+      <div><label for="setCust">NJV Customer ID</label><input type="text" id="setCust"></div>
+      <div><label for="setTol">Tolerance (RM)</label><input type="number" id="setTol" step="0.005" min="0"></div>
+      <div><label for="setTax">Tax rate (%)</label><input type="number" id="setTax" step="0.5" min="0"></div>
+    </div>
+
+    <h3>Outbound (B2C)</h3>
+    <div class="gen-grid">
+      <div><label for="setPerOrder">Per-order fee (RM)</label><input type="number" id="setPerOrder" step="0.05" min="0"></div>
+    </div>
+    <table id="outbTable">
+      <thead><tr><th>Per-item rate (RM)</th><th>Max CBM per item (&le;)</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div style="margin-top:10px"><button class="ghost small-btn" id="btnAddOutb" type="button">Add tier</button></div>
+    <p class="hint" style="margin-top:6px">Tiers ascending by CBM. A parcel's charge must equal the per-order fee plus a per-item tier mix consistent with its total CBM.</p>
+
+    <h3>Inbound processing</h3>
+    <table id="inbTable">
+      <thead><tr><th>Per-item rate (RM)</th><th>Max CBM per item (&le;)</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div style="margin-top:10px"><button class="ghost small-btn" id="btnAddInb" type="button">Add tier</button></div>
+
+    <h3>Storage</h3>
+    <div class="gen-grid">
+      <div><label for="setStor">Ambient (RM/CBM/day)</label><input type="number" id="setStor" step="0.05" min="0"></div>
+      <div><label for="setStorAir">Air-conditioned (RM/CBM/day)</label><input type="number" id="setStorAir" step="0.05" min="0"></div>
+    </div>
+
+    <h3>VAS rate card</h3>
+    <p class="hint">A VAS line is rate-checked when its description contains the key (case-insensitive). Lines matching nothing appear under "VAS not on rate card" for review — add consumables here once NJV confirms their prices.</p>
+    <table id="vasTable">
+      <thead><tr><th>Description contains</th><th>Rate (RM)</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div style="margin-top:10px"><button class="ghost small-btn" id="btnAddVas" type="button">Add VAS entry</button></div>
+
+    <h3>Checks to run</h3>
+    <div class="toggles" id="checkToggles"></div>
+
+    <div class="settings-actions">
+      <button class="primary" id="btnSaveSettings">Save settings</button>
+      <button class="ghost" id="btnResetSettings">Reset to defaults</button>
+      <button class="ghost" id="btnCloseSettings">Close</button>
+    </div>
+  </div>
+
+  <div class="err" id="errBox"></div>
+  <div id="results"></div>
+</div>
+
+<script>
+/* ============================================================
+   verify-core.js — shared runtime for 3PL bill-verification tools
+   Domain-agnostic: CSS lives in verify-core.css; this file owns the
+   generic helpers (number/CSV parsing, settings persistence) and the
+   app wiring (uploads, run, settings panel, dashboard + check tables,
+   Excel export). Tool-specific code (parsers, runVerification, rate
+   cards, settings form) is supplied by each tool's app via initApp().
+   ============================================================ */
+const VK = (function(){
+
+  // ---- generic value helpers ----
+  function num(v){ const n = Number(String(v ?? '').replace(/[$,]/g,'')); return isNaN(n) ? 0 : n; }
+  function makeFmt(locale){
+    return function(v){ return typeof v === 'number' ? v.toLocaleString(locale, { maximumFractionDigits:4 }) : v; };
+  }
+
+  // ---- RFC-4180 CSV parsing (quoted fields, embedded commas/quotes/newlines) ----
+  function parseCSV(text){
+    const rows = []; let row = [], field = '', i = 0, inQ = false;
+    text = String(text).replace(/^\uFEFF/, '');
+    while(i < text.length){
+      const c = text[i];
+      if(inQ){
+        if(c === '"'){ if(text[i+1] === '"'){ field += '"'; i += 2; continue; } inQ = false; i++; continue; }
+        field += c; i++; continue;
+      }
+      if(c === '"'){ inQ = true; i++; continue; }
+      if(c === ','){ row.push(field); field = ''; i++; continue; }
+      if(c === '\r'){ i++; continue; }
+      if(c === '\n'){ row.push(field); rows.push(row); row = []; field = ''; i++; continue; }
+      field += c; i++;
+    }
+    if(field.length || row.length){ row.push(field); rows.push(row); }
+    return rows;
+  }
+  function csvToObjects(text){
+    const rows = parseCSV(text).filter(r => r.some(c => String(c).trim() !== ''));
+    if(!rows.length) return [];
+    const head = rows[0].map(h => h.trim());
+    return rows.slice(1).map(r => { const o = {}; head.forEach((h,j) => o[h] = r[j] ?? ''); return o; });
+  }
+
+  // ---- settings persistence (localStorage; safe in private mode) ----
+  function loadSettings(key, defaults){
+    const base = JSON.parse(JSON.stringify(defaults));
+    try{
+      const raw = localStorage.getItem(key);
+      if(!raw) return base;
+      const s = JSON.parse(raw);
+      return { ...base, ...s, enabled: { ...(base.enabled||{}), ...(s.enabled||{}) } };
+    }catch(e){ return base; }
+  }
+  function saveSettings(key, settings){ try{ localStorage.setItem(key, JSON.stringify(settings)); }catch(e){} }
+
+  // ---- app wiring ----
+  // config = {
+  //   settingsKey, defaults, locale, exportFilename,
+  //   uploads: [{ dropId, fileId, key, read:'text'|'buffer', parser }],
+  //   runReady: state => bool,
+  //   verify: (state, settings) => res,           // res = { checks, totals }
+  //   checkMeta: [[key, title, desc, critical?], ...],
+  //   dashboard: (totals, checks, fmt) => [{ label, value, note, critical? }],
+  //   summaryRows: (totals, settings) => [{ Item, Value }],
+  //   settingsForm: { render(settings, panelEl), read(panelEl, settings) => bool },
+  //   noFileLabel: optional string for the 'nofile' pill,
+  //   maxRows: optional (default 50)
+  // }
+  function initApp(config){
+    const MAX_ROWS = config.maxRows || 50;
+    const fmt = makeFmt(config.locale || 'en-US');
+    const state = { result:null };
+    let settings = loadSettings(config.settingsKey, config.defaults);
+    let remotePush = null;   // set by the Firebase gate; called after any settings save
+    function syncRemote(){ if(remotePush) remotePush(settings); }
+
+    const $ = id => document.getElementById(id);
+    const errBox = $('errBox');
+    function showError(msg){ errBox.textContent = msg; errBox.style.display = 'block'; }
+    function hideError(){ errBox.style.display = 'none'; }
+
+    // uploads
+    for(const u of config.uploads){
+      const drop = $(u.dropId), input = drop.querySelector('input');
+      drop.addEventListener('click', () => input.click());
+      input.addEventListener('change', async () => {
+        const f = input.files[0];
+        if(!f) return;
+        try{
+          const raw = u.read === 'buffer' ? await f.arrayBuffer() : await f.text();
+          state[u.key] = u.parser(raw);
+          $(u.fileId).textContent = f.name;
+          drop.classList.add('loaded');
+          hideError();
+        }catch(e){ showError(`Could not read ${f.name}: ${e.message}`); }
+        $('btnRun').disabled = !config.runReady(state);
+      });
+    }
+
+    // run
+    $('btnRun').addEventListener('click', () => {
+      try{
+        state.result = config.verify(state, settings);
+        render(state.result);
+        $('btnExport').style.display = 'inline-block';
+        hideError();
+      }catch(e){ showError('Verification failed: ' + e.message); }
+    });
+
+    // settings panel
+    const panel = $('settingsPanel');
+    $('btnSettings').addEventListener('click', () => {
+      config.settingsForm.render(settings, panel);
+      panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+    });
+    $('btnSaveSettings').addEventListener('click', () => {
+      if(!config.settingsForm.read(panel, settings)) return;
+      saveSettings(config.settingsKey, settings);
+      syncRemote();
+      hideError();
+      panel.style.display = 'none';
+      if(state.result && config.runReady(state)){ state.result = config.verify(state, settings); render(state.result); }
+    });
+    $('btnResetSettings').addEventListener('click', () => {
+      settings = JSON.parse(JSON.stringify(config.defaults));
+      saveSettings(config.settingsKey, settings);
+      syncRemote();
+      config.settingsForm.render(settings, panel);
+    });
+    $('btnCloseSettings').addEventListener('click', () => { panel.style.display = 'none'; });
+
+    // ---- settings import / export (rate cards & rules live in a private JSON, not in this file) ----
+    (function(){
+      const actions = panel.querySelector('.settings-actions');
+      if(!actions) return;
+      const impBtn = document.createElement('button');
+      impBtn.type = 'button'; impBtn.className = 'ghost'; impBtn.id = 'btnImportSettings'; impBtn.textContent = 'Import settings';
+      const expBtn = document.createElement('button');
+      expBtn.type = 'button'; expBtn.className = 'ghost'; expBtn.id = 'btnExportSettings'; expBtn.textContent = 'Export settings';
+      const fileInp = document.createElement('input');
+      fileInp.type = 'file'; fileInp.accept = '.json,application/json'; fileInp.hidden = true; fileInp.id = 'settingsFileInput';
+      const msg = document.createElement('span');
+      msg.id = 'settingsIoMsg'; msg.style.cssText = 'font-size:12px;color:var(--info);align-self:center;';
+      actions.appendChild(impBtn); actions.appendChild(expBtn); actions.appendChild(fileInp); actions.appendChild(msg);
+
+      expBtn.addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(settings, null, 2)], { type:'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = config.settingsKey.replace(/Settings.*/i,'') + '-settings.json';
+        a.click(); URL.revokeObjectURL(a.href);
+      });
+      impBtn.addEventListener('click', () => { fileInp.value = ''; fileInp.click(); });
+      fileInp.addEventListener('change', () => {
+        const f = fileInp.files && fileInp.files[0]; if(!f) return;
+        const rd = new FileReader();
+        rd.onload = () => {
+          try{
+            const s = JSON.parse(rd.result);
+            if(!s || typeof s !== 'object' || Array.isArray(s)) throw new Error('not a settings object');
+            const base = JSON.parse(JSON.stringify(config.defaults));
+            settings = { ...base, ...s, enabled: { ...(base.enabled||{}), ...(s.enabled||{}) } };
+            saveSettings(config.settingsKey, settings);
+            syncRemote();
+            config.settingsForm.render(settings, panel);
+            msg.textContent = '\u2713 Settings imported from ' + f.name;
+            setTimeout(() => { msg.textContent = ''; }, 4000);
+            if(state.result && config.runReady(state)){ state.result = config.verify(state, settings); render(state.result); }
+          }catch(e){ msg.textContent = 'Import failed: not a valid settings JSON'; setTimeout(() => { msg.textContent = ''; }, 5000); }
+        };
+        rd.readAsText(f);
+      });
+    })();
+
+    // render dashboard + checks
+    function pillFor(rows, kind){
+      if(rows === null) return '<span class="pill off">Disabled</span>';
+      if(rows === 'nofile') return `<span class="pill info">${config.noFileLabel || 'Not run — missing optional file'}</span>`;
+      if(rows === 'noconfig') return '<span class="pill info">Not configured — import settings</span>';
+      if(rows.length === 0) return '<span class="pill ok">Pass</span>';
+      if(kind === 'info') return `<span class="pill info">${rows.length} shown</span>`;
+      return `<span class="pill flag">${rows.length} flagged</span>`;
+    }
+    function render(res){
+      const metrics = config.dashboard(res.totals, res.checks, fmt);
+      let html = '<div class="dash">' + metrics.map(m =>
+        `<div class="metric"><div class="label">${m.label}</div><div class="value"${m.critical?' style="color:var(--crit)"':''}>${m.value}</div><div class="note">${m.note||''}</div></div>`
+      ).join('') + '</div>';
+      for(const [key, title, desc, meta] of config.checkMeta){
+        const rows = res.checks[key];
+        const kind = meta === 'info' ? 'info' : null;
+        const critical = meta && meta !== 'info';
+        const isCrit = critical && Array.isArray(rows) && rows.length;
+        html += `<div class="card check${isCrit?' critical':''}"><div class="check-head"><h2>${title}</h2>${pillFor(rows, kind)}</div><p class="desc">${desc}</p>`;
+        if(Array.isArray(rows) && rows.length){
+          const cols = Object.keys(rows[0]);
+          html += '<table><thead><tr>' + cols.map(c=>`<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+          for(const r of rows.slice(0, MAX_ROWS))
+            html += '<tr>' + cols.map(c=>`<td class="${typeof r[c]==='number'?'num':''}">${fmt(r[c])}</td>`).join('') + '</tr>';
+          html += '</tbody></table>';
+          if(rows.length > MAX_ROWS) html += `<div class="trunc">Showing ${MAX_ROWS} of ${rows.length} rows — full list in the Excel export.</div>`;
+        }
+        html += '</div>';
+      }
+      const box = $('results'); box.innerHTML = html; box.style.display = 'block';
+    }
+
+    // export
+    $('btnExport').addEventListener('click', () => {
+      const res = state.result; if(!res) return;
+      const wb = XLSX.utils.book_new();
+      const summary = config.summaryRows(res.totals, settings).slice();
+      for(const [key, title] of config.checkMeta.map(m=>[m[0],m[1]]))
+        summary.push({ Item:`${title} — flagged`, Value: res.checks[key] === null ? 'Disabled' : res.checks[key] === 'nofile' ? 'Not run' : res.checks[key] === 'noconfig' ? 'Not configured' : res.checks[key].length });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), 'Summary');
+      for(const [key, title] of config.checkMeta.map(m=>[m[0],m[1]])){
+        const data = res.checks[key];
+        const rows = data === null ? [{ Result:'Check disabled in settings' }]
+          : data === 'nofile' ? [{ Result:'Not run — optional file not uploaded' }]
+          : data === 'noconfig' ? [{ Result:'Not configured — import your settings file (Settings → Import settings)' }]
+          : data.length ? data : [{ Result:'Pass — no discrepancies' }];
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), title.replace(/[\\/?*\[\]:]/g,'').slice(0,31));
+      }
+      if(typeof config.extraSheets === 'function'){
+        for(const sh of (config.extraSheets(res, settings) || [])){
+          const ws = sh.aoa ? XLSX.utils.aoa_to_sheet(sh.aoa) : XLSX.utils.json_to_sheet(sh.rows || []);
+          XLSX.utils.book_append_sheet(wb, ws, String(sh.name).replace(/[\\/?*\[\]:]/g,'').slice(0,31));
+        }
+      }
+      XLSX.writeFile(wb, config.exportFilename);
+    });
+
+    // ---- optional Firebase gate: login required, settings synced to Firestore ----
+    // config.firebase = { config: {...firebase web config}, doc: 'toolname' }
+    // Settings live in Firestore collection 'verification_settings', one doc per tool,
+    // readable/writable only by authenticated users (see README for the security rules).
+    if(config.firebase){
+      const wrap = document.querySelector('.wrap');
+      wrap.style.display = 'none';
+
+      const login = document.createElement('div');
+      login.className = 'login-screen'; login.id = 'loginScreen';
+      login.innerHTML = `
+        <div class="login-card">
+          <div class="login-brand">Purest Nest</div>
+          <div class="login-sub">${document.title || 'Bill Verification'}</div>
+          <label class="login-label" for="liEmail">Email</label>
+          <input class="login-input" id="liEmail" type="email" placeholder="you@thepurestgroup.com" autocomplete="email">
+          <label class="login-label" for="liPw">Password</label>
+          <input class="login-input" id="liPw" type="password" placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" autocomplete="current-password">
+          <button class="btn-login" id="liBtn" type="button">Sign in</button>
+          <div class="login-err" id="liErr"></div>
+          <a class="login-home" href="../">\u2190 All tools</a>
+        </div>`;
+      document.body.appendChild(login);
+
+      function loadScript(src){ return new Promise((ok, bad) => {
+        const el = document.createElement('script'); el.src = src;
+        el.onload = ok; el.onerror = () => bad(new Error('failed: ' + src));
+        document.head.appendChild(el);
+      }); }
+
+      const SDK = 'https://www.gstatic.com/firebasejs/10.12.2/firebase-';
+      const ready = (typeof firebase !== 'undefined')
+        ? Promise.resolve()
+        : loadScript(SDK+'app-compat.js').then(()=>loadScript(SDK+'auth-compat.js')).then(()=>loadScript(SDK+'firestore-compat.js'));
+
+      ready.then(() => {
+        if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(config.firebase.config);
+        const auth = firebase.auth();
+        const doc = firebase.firestore().collection('verification_settings').doc(config.firebase.doc);
+        const liErr = $('liErr'), liBtn = $('liBtn');
+
+        function doLogin(){
+          const email = $('liEmail').value.trim(), pw = $('liPw').value;
+          if(!email || !pw){ liErr.textContent = 'Please enter email and password.'; return; }
+          liBtn.disabled = true; liBtn.textContent = 'Signing in\u2026'; liErr.textContent = '';
+          auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
+            .then(() => auth.signInWithEmailAndPassword(email, pw))
+            .catch(e => {
+              liErr.textContent = (e && (e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found'))
+                ? 'Incorrect email or password.' : 'Sign in failed. Please try again.';
+              liBtn.disabled = false; liBtn.textContent = 'Sign in';
+            });
+        }
+        liBtn.addEventListener('click', doLogin);
+        $('liPw').addEventListener('keydown', e => { if(e.key === 'Enter') doLogin(); });
+
+        // 2h inactivity sign-out (same policy as the MY Order Processing Tool)
+        const INACT = 2*60*60*1000; let inactT = null;
+        const bump = () => { if(inactT) clearTimeout(inactT); inactT = setTimeout(() => auth.signOut(), INACT); };
+        const EVS = ['mousemove','keydown','mousedown','touchstart','scroll','click'];
+        function watch(on){ EVS.forEach(ev => on ? document.addEventListener(ev, bump, {passive:true}) : document.removeEventListener(ev, bump)); if(on) bump(); else if(inactT){ clearTimeout(inactT); inactT = null; } }
+
+        let bar = null;
+        auth.onAuthStateChanged(user => {
+          if(user){
+            remotePush = s => doc.set({ payload: JSON.stringify(s), updatedAt: new Date().toISOString(), updatedBy: user.email || '' })
+              .then(() => { hideError(); setIoMsg('\u2713 Saved and synced'); })
+              .catch(err => {
+                setIoMsg('Saved locally \u2014 sync failed');
+                showError('Settings saved on this browser but did NOT sync to Firebase (' + (err && err.code ? err.code : 'error') + '). '
+                  + 'If this says permission-denied, add the verification_settings rule in Firestore Rules and try again.');
+              });
+            doc.get().then(snap => {
+              if(snap.exists){
+                const base = JSON.parse(JSON.stringify(config.defaults));
+                const raw = snap.data();
+                let r = raw;
+                if(typeof raw.payload === 'string'){ try{ r = JSON.parse(raw.payload); }catch(e){ r = {}; } }
+                settings = { ...base, ...r, enabled: { ...(base.enabled||{}), ...(r.enabled||{}) } };
+                saveSettings(config.settingsKey, settings);   // local cache of the synced copy
+              }
+              showTool(user);
+            }).catch(() => { setIoMsg('Firebase unreachable \u2014 using local settings copy'); showTool(user); });
+          }else{
+            remotePush = null; watch(false);
+            if(bar){ bar.remove(); bar = null; }
+            wrap.style.display = 'none'; login.style.display = 'flex';
+            liBtn.disabled = false; liBtn.textContent = 'Sign in';
+          }
+        });
+
+        function setIoMsg(txt){ const m = $('settingsIoMsg'); if(m){ m.textContent = txt; setTimeout(() => { m.textContent = ''; }, 4000); } }
+        function showTool(user){
+          login.style.display = 'none'; wrap.style.display = '';
+          if(!bar){
+            bar = document.createElement('div'); bar.className = 'authbar';
+            bar.innerHTML = `<a class="auth-home" href="../">\u2190 All tools</a><span class="auth-user"></span><button type="button" class="ghost auth-out">Sign out</button>`;
+            wrap.insertBefore(bar, wrap.firstChild);
+            bar.querySelector('.auth-out').addEventListener('click', () => auth.signOut());
+          }
+          bar.querySelector('.auth-user').textContent = user.email || '';
+          watch(true);
+        }
+      }).catch(() => {
+        const liErr = document.getElementById('liErr');
+        if(liErr) liErr.textContent = 'Cannot reach Firebase \u2014 check your connection and reload.';
+      });
+    }
+  }
+
+  return { num, makeFmt, parseCSV, csvToObjects, loadSettings, saveSettings, initApp };
+})();
+if(typeof window !== 'undefined'){ window.VK = VK; }
+
+
+</script>
+<script>
+/*
+   NJV (Ninja Van) MY Fulfilment Bill Verification — app logic
+   Runs on the shared kit runtime (verify-core.js / VK). Build with: python3 build.py njv
+   Bill model (calibrated on the Jun'26 bill, exact to the cent):
+     outbound B2C = per-order fee + per-item CBM-tier rate (mixed-size parcels verified via tier-mix feasibility)
+     inbound      = per-item CBM-tier rate (mixed receipts via the same feasibility)
+     storage      = daily closing CBM × rate (charge computed on unrounded CBM — tolerance applies)
+     VAS          = qty × rate; known services rate-checked against the card, others surfaced for review
+*/
+
+function num(v){ if(typeof v === 'number') return v; const n = parseFloat(String(v).replace(/,/g,'')); return isNaN(n) ? 0 : n; }
+
+function csvToObjects(text){
+  const rows = []; let row = [], field = '', q = false;
+  for(let i = 0; i < text.length; i++){
+    const c = text[i];
+    if(q){ if(c === '"'){ if(text[i+1] === '"'){ field += '"'; i++; } else q = false; } else field += c; }
+    else if(c === '"') q = true;
+    else if(c === ','){ row.push(field); field = ''; }
+    else if(c === '\n' || c === '\r'){ if(c === '\r' && text[i+1] === '\n') i++; row.push(field); field = ''; if(row.length > 1 || row[0] !== '') rows.push(row); row = []; }
+    else field += c;
+  }
+  if(field !== '' || row.length) { row.push(field); rows.push(row); }
+  if(!rows.length) return [];
+  const hdr = rows[0].map(h => h.trim());
+  return rows.slice(1).map(r => { const o = {}; hdr.forEach((h,i) => o[h] = (r[i] === undefined ? '' : r[i])); return o; });
+}
+
+/* headers in NJV sheets can carry stray spaces (e.g. " Amount (MYR) ") — look keys up trimmed */
+function keyGet(row, name){
+  if(row[name] !== undefined) return row[name];
+  for(const k of Object.keys(row)) if(k.trim() === name) return row[k];
+  return '';
+}
+
+const MONTHS = { JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,JUL:7,AUG:8,SEP:9,OCT:10,NOV:11,DEC:12 };
+function daysInMonth(y, m){ return new Date(y, m, 0).getDate(); }
+
+/* Order-number platform classification */
+function platformOf(s){
+  s = String(s).trim();
+  // split-shipment suffix e.g. "5839...678 - 1" — classify by the base order number
+  const base = s.replace(/\s*-\s*\d{1,2}$/, '');
+  if(base !== s && platformOf(base) !== 'manual') s = base;
+  if(/^#\w+$/.test(s) || /^MY-\d+$/i.test(s)) return 'shopify';
+  if(/^\d{18}$/.test(s)) return 'tiktok';
+  if(/^\d{13}$/.test(s)) return 'shopifyId';   // Shopify internal order Id (NJV logs these for the MY store, and sometimes SG)
+  if(/^\d{14,17}$/.test(s)) return 'lazada';
+  if(/^\d{6}[A-Z0-9]{7,}$/i.test(s) && /^[0-9]{2}(0[1-9]|1[0-2])/.test(s)) return 'shopee';
+  return 'manual';
+}
+
+const DEFAULT_SETTINGS = {
+  customerId: 'FF-MY-000153',
+  tolerance: 0.02,     // per-row tolerance (RM) — storage charges are computed on unrounded CBM
+  taxRate: 6,
+  outbPerOrder: 0,     // contract terms live in the private settings JSON — 0/empty = not configured
+  outbTiers: [],       // [{ rate, maxCbm }] ascending by maxCbm
+  inbTiers: [],
+  storageRate: 0,      // ambient RM/CBM/day
+  storageRateAircon: 0,
+  vasCard: [],         // [{ key, rate }] — matched when the VAS description contains key (case-insensitive)
+  enabled: { reconciliation:true, outboundRate:true, inboundRate:true, storage:true,
+             vasArithmetic:true, vasKnown:true, vasUnknown:true, manualLines:true,
+             duplicates:true, billedNotInExport:true, exportNotBilled:true },
+};
+
+const CHECK_META = [
+  ['reconciliation','Invoice reconciliation','Inbound + outbound + storage detail totals vs the invoice Storage/Handling/Mgmt line, VAS detail vs the VAS line, and the tax math on both.'],
+  ['outboundRate','Outbound rate check','Per-order fee + per-item CBM tier. Single-item parcels verify exactly; multi-item parcels must be achievable by some mix of card tiers consistent with the parcel\u2019s total CBM. Manual/VAS-type lines are excluded (listed separately).'],
+  ['inboundRate','Inbound rate check','Per-item CBM tier per receipt \u2014 exact single-tier receipts verify directly, mixed receipts via tier-mix feasibility.'],
+  ['storage','Storage daily recompute','Each day: closing CBM \u00d7 contracted rate (within tolerance \u2014 the bill computes on unrounded CBM). Also verifies the bill\u2019s rate column equals the contracted rate and that every day of the month is present.'],
+  ['vasArithmetic','VAS arithmetic','Quantity \u00d7 per-service charge must equal each VAS line total.'],
+  ['vasKnown','VAS rates vs card','VAS lines matched to the contracted card are rate-verified; over- or under-billing is flagged with the variance.'],
+  ['vasUnknown','VAS not on rate card','VAS lines with no matching card entry (consumables, transport, repack\u2026) \u2014 surfaced for review, not counted as issues.'],
+  ['manualLines','Manual / VAS-type outbound lines','Outbound lines whose reference is not a marketplace order number (repack, breakbulk, internal refs) \u2014 not rate-verified, listed for review.'],
+  ['duplicates','Duplicate orders','Marketplace orders billed on more than one outbound line \u2014 verify split shipment vs double charge.'],
+  ['billedNotInExport','Billed but not in order export','Billed marketplace orders missing from the uploaded export(s). Shopify lines match on Name OR Id across both store exports; corrupted Id columns are detected and reported instead of mass-flagging. Lazada/TikTok/Shopee lines without an export are counted, not flagged.'],
+  ['exportNotBilled','Fulfilled but not billed','Fulfilled orders in the uploaded export(s) with no outbound line. If a store is split across 3PLs, orders fulfilled elsewhere will appear here \u2014 review with that in mind.'],
+];
+
+/* ---------- parsers ---------- */
+function parseBill(wb){
+  const bySuffix = sfx => wb.SheetNames.find(n => n.trim().toLowerCase().endsWith(sfx));
+  const inv = wb.SheetNames.find(n => /external fulfilment bill/i.test(n) && /^MY/i.test(n.trim()));
+  const rowsOf = n => n ? XLSX.utils.sheet_to_json(wb.Sheets[n], { defval:'', raw:true }) : [];
+  const bill = { invoice:[], inbound:[], outbound:[], storage:[], vas:[] };
+  for(const r of rowsOf(inv)){
+    bill.invoice.push({ custId:String(keyGet(r,'Customer ID')).trim(), desc:String(keyGet(r,'Description')).trim(),
+      amount:num(keyGet(r,'Amount (MYR)')), taxAmt:num(keyGet(r,'Tax Amount (MYR)')), gross:num(keyGet(r,'Gross Amount (MYR)')) });
+  }
+  for(const r of rowsOf(bySuffix('inbound'))){
+    const cid = String(keyGet(r,'Customer ID')).trim(); if(!cid) continue;
+    bill.inbound.push({ custId:cid, req:String(keyGet(r,'Inbound Request Number')).trim(),
+      items:num(keyGet(r,'Number of Items')), cbm:num(keyGet(r,'Total CBM')), amount:num(keyGet(r,'Amount')) });
+  }
+  for(const r of rowsOf(bySuffix('outbound'))){
+    const cid = String(keyGet(r,'Customer ID')).trim(); if(!cid) continue;
+    bill.outbound.push({ custId:cid, order:String(keyGet(r,'Order Number')).trim(),
+      items:num(keyGet(r,'Number of items')), cbm:num(keyGet(r,'Total CBM')), charge:num(keyGet(r,'Total Charge')) });
+  }
+  for(const r of rowsOf(bySuffix('storage'))){
+    const cid = String(keyGet(r,'Customer ID')).trim(); if(!cid) continue;
+    bill.storage.push({ custId:cid, dateRaw:keyGet(r,'Date'), cbm:num(keyGet(r,'Closing CBM')),
+      rate:num(keyGet(r,'Charges per CBM')), charge:num(keyGet(r,'Total Charge')) });
+  }
+  for(const r of rowsOf(bySuffix('vas'))){
+    const cid = String(keyGet(r,'Customer ID')).trim(); if(!cid) continue;
+    bill.vas.push({ custId:cid, item:String(keyGet(r,'Item')).trim(), desc:String(keyGet(r,'Description')).trim(),
+      qty:num(keyGet(r,'Quantity')), rate:num(keyGet(r,'Per Service Charge')), total:num(keyGet(r,'Total Charge')) });
+  }
+  return bill;
+}
+
+function parseShopify(text){
+  const rows = csvToObjects(text);
+  const byName = new Map(), ids = new Set();
+  let idsCorrupted = false, idSeen = false;
+  for(const r of rows){
+    const name = String(keyGet(r,'Name') || '').trim();
+    const rawId = String(keyGet(r,'Id') || '').trim();
+    if(rawId){ idSeen = true;
+      if(/e\+/i.test(rawId)) idsCorrupted = true;             // "7.1812E+12" — Excel truncated the 13-digit Id
+      else if(/^\d{10,}$/.test(rawId)) ids.add(rawId);
+    }
+    if(!name) continue;
+    if(!byName.has(name))
+      byName.set(name, { name, id: (/^\d{10,}$/.test(rawId) ? rawId : ''), fulfillment:String(keyGet(r,'Fulfillment Status')||'').trim(),
+        fulfilledAt:String(keyGet(r,'Fulfilled at')||'').slice(0,10), created:String(keyGet(r,'Created at')||'').slice(0,10) });
+  }
+  return { byName, ids, idsCorrupted: idSeen && idsCorrupted };
+}
+
+function parseTiktok(wb){
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval:'', raw:true });
+  const ids = new Set();
+  for(const r of rows){
+    const id = String(keyGet(r,'Order ID')).trim();
+    if(/^\d{18}$/.test(id)) ids.add(id);   // skip the subtitle row and non-order rows
+  }
+  return ids;
+}
+
+function parseShopee(wb){
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval:'', raw:true });
+  const byId = new Map();
+  for(const r of rows){
+    const id = String(r['Order ID'] || r['Order SN'] || '').trim();
+    if(!id) continue;
+    if(!byId.has(id)) byId.set(id, { id, status:String(r['Order Status']||'').trim() });
+  }
+  return byId;
+}
+
+/* ---------- tier-mix feasibility ----------
+   Can `n` items with total CBM `V` produce charge component `target`
+   using some per-item assignment to `tiers` ({rate, maxCbm} ascending, lo = previous maxCbm)?  */
+function tierMixFeasible(n, V, target, tiers){
+  if(n <= 0 || !tiers.length) return false;
+  if(n > 60) { // guard: band check only
+    const rates = tiers.map(t => t.rate);
+    return target >= n*Math.min(...rates) - 0.005 && target <= n*Math.max(...rates) + 0.005;
+  }
+  const bounds = tiers.map((t,i) => ({ rate:t.rate, lo: i ? tiers[i-1].maxCbm : 0, hi:t.maxCbm }));
+  let found = false;
+  const rec = (ti, left, rsum, loC, hiC) => {
+    if(found) return;
+    if(rsum > target + 0.005) return;
+    if(ti === bounds.length - 1){
+      const c = left, b = bounds[ti];
+      const rs = rsum + c*b.rate;
+      if(Math.abs(rs - target) <= 0.005 && loC + c*b.lo <= V + 1e-9 && V <= hiC + c*b.hi + 1e-9) found = true;
+      return;
+    }
+    const b = bounds[ti];
+    for(let c = 0; c <= left; c++) rec(ti+1, left-c, rsum + c*b.rate, loC + c*b.lo, hiC + c*b.hi);
+  };
+  rec(0, n, 0, 0, 0);
+  return found;
+}
+function tierFor(cbm, tiers){ for(const t of tiers) if(cbm <= t.maxCbm + 1e-12) return t; return null; }
+
+/* ---------- verification ---------- */
+function orderKey(s){
+  s = String(s).trim();
+  const base = s.replace(/\s*-\s*\d{1,2}$/, '');
+  return (base !== s && platformOf(base) !== 'manual') ? base : s;
+}
+
+function runVerification(bill, shopifySG, shopifyMY, shopee, tiktok, settings){
+  const shopExports = [shopifySG, shopifyMY].filter(Boolean);
+  const on = settings.enabled, TOL = settings.tolerance;
+  const cid = String(settings.customerId).trim();
+  const inv = bill.invoice.filter(r => r.custId === cid);
+  const inbound = bill.inbound.filter(r => r.custId === cid);
+  const outbound = bill.outbound.filter(r => r.custId === cid);
+  const storage = bill.storage.filter(r => r.custId === cid);
+  const vas = bill.vas.filter(r => r.custId === cid);
+  const res = { checks:{}, totals:{} };
+
+  // bill month from the invoice description e.g. "(Jun'26)"
+  let billY = null, billM = null;
+  for(const r of inv){
+    const m = /\((\w{3})'(\d{2})\)/.exec(r.desc);
+    if(m && MONTHS[m[1].toUpperCase()]){ billM = MONTHS[m[1].toUpperCase()]; billY = 2000 + parseInt(m[2],10); break; }
+  }
+
+  const outbConfigured = (settings.outbPerOrder||0) > 0 && (settings.outbTiers||[]).length > 0;
+  const inbConfigured = (settings.inbTiers||[]).length > 0;
+
+  // classify outbound lines once
+  const mktLines = [], manual = [];
+  for(const l of outbound) (platformOf(l.order) === 'manual' ? manual : mktLines).push(l);
+
+  // 1. Outbound rate
+  if(on.outboundRate && !outbConfigured){ res.checks.outboundRate = 'noconfig'; res.outbDetail = null; }
+  else if(on.outboundRate){
+    const rows = []; const detail = [];
+    for(const l of mktLines){
+      if(!(l.items > 0)) continue;
+      const per = l.cbm / l.items;
+      let status, expected = '';
+      const t1 = tierFor(per, settings.outbTiers);
+      if(per > settings.outbTiers[settings.outbTiers.length-1].maxCbm + 1e-12){
+        status = 'Per-item CBM above card range - TBA rate, review';
+      } else if(l.items === 1){
+        const exp = settings.outbPerOrder + t1.rate; expected = +exp.toFixed(2);
+        status = Math.abs(exp - l.charge) <= 0.005 ? 'Verified (exact)' : 'MISMATCH';
+      } else {
+        const expAvg = t1 ? settings.outbPerOrder + l.items*t1.rate : null;
+        if(expAvg !== null && Math.abs(expAvg - l.charge) <= 0.005){ status = 'Verified (uniform tier)'; expected = +expAvg.toFixed(2); }
+        else if(tierMixFeasible(l.items, l.cbm, l.charge - settings.outbPerOrder, settings.outbTiers)) status = 'Verified (mixed tiers)';
+        else status = 'MISMATCH';
+      }
+      detail.push({ 'Order':l.order, 'Platform':platformOf(l.order), 'Items':l.items, 'Total CBM':l.cbm,
+        'Charged (RM)':l.charge, 'Expected (RM)':expected, 'Status':status });
+      if(status === 'MISMATCH' || /TBA/.test(status))
+        rows.push({ 'Order':l.order, 'Items':l.items, 'Total CBM':l.cbm, 'Charged (RM)':l.charge,
+          'Expected (RM)':expected, 'Note': status === 'MISMATCH' ? 'Charge not achievable by any card tier mix for this item count and CBM' : status });
+    }
+    res.checks.outboundRate = rows; res.outbDetail = detail;
+  } else { res.checks.outboundRate = null; res.outbDetail = null; }
+
+  // 2. Inbound rate
+  if(on.inboundRate && !inbConfigured) res.checks.inboundRate = 'noconfig';
+  else if(on.inboundRate){
+    const rows = [];
+    for(const l of inbound){
+      if(!(l.items > 0)) continue;
+      const per = l.cbm / l.items, implied = l.amount / l.items;
+      const t1 = tierFor(per, settings.inbTiers);
+      const exact = t1 && Math.abs(t1.rate*l.items - l.amount) <= 0.005;
+      const ok = exact || tierMixFeasible(l.items, l.cbm, l.amount, settings.inbTiers);
+      if(!ok) rows.push({ 'Inbound Request':l.req, 'Items':l.items, 'Total CBM':l.cbm, 'Charged (RM)':l.amount,
+        'Implied RM/item': +implied.toFixed(4), 'Note':'Charge not achievable by any inbound tier mix for this item count and CBM' });
+    }
+    res.checks.inboundRate = rows;
+  } else res.checks.inboundRate = null;
+
+  // 3. Storage
+  if(on.storage && !((settings.storageRate||0) > 0)) res.checks.storage = 'noconfig';
+  else if(on.storage){
+    const rows = [];
+    const okRates = [settings.storageRate].concat((settings.storageRateAircon||0) > 0 ? [settings.storageRateAircon] : []);
+    for(const [i,l] of storage.entries()){
+      if(!okRates.some(r => Math.abs(r - l.rate) <= 0.005))
+        rows.push({ 'Row':i+1, 'Date':String(l.dateRaw), 'Closing CBM':l.cbm, 'Rate billed':l.rate,
+          'Note':`Rate differs from contracted (RM${okRates.join(' / ')})` });
+      const exp = l.cbm * l.rate;
+      if(Math.abs(exp - l.charge) > TOL)
+        rows.push({ 'Row':i+1, 'Date':String(l.dateRaw), 'Closing CBM':l.cbm, 'Rate billed':l.rate,
+          'Charged (RM)':l.charge, 'Expected (RM)':+exp.toFixed(2), 'Note':'Daily charge differs from CBM \u00d7 rate beyond tolerance' });
+    }
+    if(billY && billM){
+      const want = daysInMonth(billY, billM);
+      if(storage.length !== want)
+        rows.push({ 'Row':'', 'Date':'', 'Note':`Storage has ${storage.length} daily rows but ${want} days in the billing month - verify missing/extra days` });
+    }
+    res.checks.storage = rows;
+  } else res.checks.storage = null;
+
+  // 4. VAS arithmetic
+  res.checks.vasArithmetic = !on.vasArithmetic ? null :
+    vas.filter(l => Math.abs(l.qty*l.rate - l.total) > 0.005)
+       .map(l => ({ 'Item':l.item, 'Description':l.desc, 'Qty':l.qty, 'Rate (RM)':l.rate,
+         'Charged (RM)':l.total, 'Expected (RM)':+(l.qty*l.rate).toFixed(2) }));
+
+  // 5/6. VAS vs card
+  const vasMatch = l => {
+    const d = l.desc.toUpperCase();
+    for(const c of (settings.vasCard||[])) if(d.includes(String(c.key).toUpperCase())) return c;
+    return null;
+  };
+  if(on.vasKnown && !(settings.vasCard||[]).length) res.checks.vasKnown = 'noconfig';
+  else if(on.vasKnown){
+    const rows = [];
+    for(const l of vas){
+      const c = vasMatch(l); if(!c) continue;
+      if(Math.abs(c.rate - l.rate) > 0.005)
+        rows.push({ 'Description':l.desc, 'Qty':l.qty, 'Billed rate (RM)':l.rate, 'Card rate (RM)':c.rate,
+          'Variance (RM)': +((l.rate - c.rate)*l.qty).toFixed(2),
+          'Note': l.rate > c.rate ? 'Billed above card' : 'Billed below card - confirm with NJV' });
+    }
+    res.checks.vasKnown = rows;
+  } else res.checks.vasKnown = null;
+  res.checks.vasUnknown = !on.vasUnknown ? null :
+    vas.filter(l => !vasMatch(l)).map(l => ({ 'Description':l.desc, 'Qty':l.qty, 'Rate (RM)':l.rate,
+      'Total (RM)':l.total, 'Note':'Not on the rate card - confirm the agreed price with NJV' }));
+
+  // 7. Manual lines
+  res.checks.manualLines = !on.manualLines ? null :
+    manual.map(l => ({ 'Reference':l.order, 'Items':l.items, 'Total CBM':l.cbm, 'Charged (RM)':l.charge,
+      'Note':'Not a marketplace order - manual/VAS-type work, review the charge basis' }));
+
+  // 8. Duplicates
+  if(on.duplicates){
+    const counts = new Map();
+    for(const l of mktLines) counts.set(orderKey(l.order), (counts.get(orderKey(l.order))||0)+1);
+    res.checks.duplicates = mktLines.filter(l => counts.get(orderKey(l.order)) > 1)
+      .map(l => ({ 'Order':l.order, 'Platform':platformOf(l.order), 'Items':l.items, 'Charged (RM)':l.charge,
+        'Note':'Order billed on more than one outbound line - verify split shipment vs double charge' }));
+  } else res.checks.duplicates = null;
+
+  // 9/10. Coverage
+  const platCounts = { shopee:0, lazada:0, tiktok:0, shopify:0, shopifyId:0 };
+  for(const l of mktLines) platCounts[platformOf(l.order)]++;
+  const anyExport = !!(shopExports.length || shopee || tiktok);
+  const idsUsable = shopExports.length > 0 && shopExports.every(e => !e.idsCorrupted);
+  const anyCorrupted = shopExports.some(e => e.idsCorrupted);
+  const nameHit = o => shopExports.some(e => e.byName.has(o));
+  const idHit = o => shopExports.some(e => e.ids.has(o));
+  if(on.billedNotInExport && !anyExport) res.checks.billedNotInExport = 'nofile';
+  else if(on.billedNotInExport){
+    const rows = [], seen = new Set();
+    if(anyCorrupted) rows.push({ 'Order':'\u26a0 Export quality', 'Platform':'Shopify',
+      'Note':'A Shopify export\u2019s Id column is corrupted (scientific notation \u2014 the CSV was opened and re-saved in Excel). Id-based matching is disabled; re-download the raw export from Shopify and re-run.' });
+    for(const l of mktLines){
+      const p = platformOf(l.order);
+      if(seen.has(l.order)) continue;
+      if(p === 'shopify' && shopExports.length && !nameHit(l.order) && !idHit(l.order)){ seen.add(l.order);
+        rows.push({ 'Order':l.order, 'Platform':'Shopify (Name)', 'Charged (RM)':l.charge, 'Note':'Not found by Name in any uploaded Shopify export - check store/order period' }); }
+      if(p === 'shopifyId' && idsUsable && !idHit(l.order)){ seen.add(l.order);
+        rows.push({ 'Order':l.order, 'Platform':'Shopify (Id)', 'Charged (RM)':l.charge, 'Note':'Not found by Id in any uploaded Shopify export - check store/order period' }); }
+      if(p === 'shopee' && shopee && !shopee.has(l.order)){ seen.add(l.order);
+        rows.push({ 'Order':l.order, 'Platform':'Shopee', 'Charged (RM)':l.charge, 'Note':'Not found in the uploaded Shopee export - check export period' }); }
+      if(p === 'tiktok' && tiktok && !tiktok.has(orderKey(l.order))){ seen.add(l.order);
+        rows.push({ 'Order':l.order, 'Platform':'TikTok', 'Charged (RM)':l.charge, 'Note':'Not found in the uploaded TikTok export - check export period' }); }
+    }
+    res.checks.billedNotInExport = rows;
+  } else res.checks.billedNotInExport = null;
+  if(on.exportNotBilled && !anyExport) res.checks.exportNotBilled = 'nofile';
+  else if(on.exportNotBilled){
+    const billedSet = new Set(mktLines.map(l => orderKey(l.order)));
+    const rows = [];
+    shopExports.forEach((e, i) => {
+      const label = i === 0 ? 'Shopify (SG)' : 'Shopify (MY)';
+      if(e.idsCorrupted){
+        rows.push({ 'Order':'\u26a0 ' + label, 'Platform':label,
+          'Note':'Export Id column corrupted \u2014 orders billed by Id cannot be recognised, so this export is not reverse-checked. Re-download the raw CSV from Shopify and re-run.' });
+        return;
+      }
+      for(const o of e.byName.values())
+        if(o.fulfillment === 'fulfilled' && !billedSet.has(o.name) && !(o.id && billedSet.has(o.id)))
+          rows.push({ 'Order':o.name, 'Platform':label, 'Fulfilled at':o.fulfilledAt, 'Created':o.created,
+            'Note':'Fulfilled but no NJV outbound line - if this store is split across 3PLs it may be fulfilled elsewhere' });
+    });
+    if(shopee) for(const o of shopee.values())
+      if(/shipped|completed|delivered/i.test(o.status) && !billedSet.has(o.id))
+        rows.push({ 'Order':o.id, 'Platform':'Shopee', 'Note':'Shipped/completed but no NJV outbound line - verify' });
+    if(tiktok) for(const id of tiktok)
+      if(!billedSet.has(id))
+        rows.push({ 'Order':id, 'Platform':'TikTok', 'Note':'In the TikTok export but no NJV outbound line - the export has no status column, verify whether it shipped via NJV' });
+    res.checks.exportNotBilled = rows;
+  } else res.checks.exportNotBilled = null;
+
+  // 11. Reconciliation
+  const inbSum = +inbound.reduce((s,l) => s+l.amount, 0).toFixed(2);
+  const outbSum = +outbound.reduce((s,l) => s+l.charge, 0).toFixed(2);
+  const storSum = +storage.reduce((s,l) => s+l.charge, 0).toFixed(2);
+  const vasSum = +vas.reduce((s,l) => s+l.total, 0).toFixed(2);
+  const invSH = inv.find(r => /storage.*handling/i.test(r.desc)), invVAS = inv.find(r => /value-?added/i.test(r.desc));
+  if(on.reconciliation){
+    const rows = [];
+    if(invSH){
+      const d = +(inbSum + outbSum + storSum - invSH.amount).toFixed(2);
+      if(Math.abs(d) > TOL) rows.push({ 'Item':'Storage/Handling/Mgmt', 'Detail total (RM)':+(inbSum+outbSum+storSum).toFixed(2),
+        'Invoice (RM)':invSH.amount, 'Difference (RM)':d, 'Note':'Detail sheets do not add up to the invoice line' });
+      const tax = +(invSH.amount * settings.taxRate/100).toFixed(2);
+      if(Math.abs(tax - invSH.taxAmt) > TOL) rows.push({ 'Item':'Storage/Handling tax', 'Invoice (RM)':invSH.taxAmt,
+        'Expected (RM)':tax, 'Difference (RM)':+(invSH.taxAmt-tax).toFixed(2), 'Note':`Tax differs from ${settings.taxRate}%` });
+    } else rows.push({ 'Item':'Storage/Handling/Mgmt', 'Note':'Invoice line not found for this customer ID' });
+    if(invVAS){
+      const d = +(vasSum - invVAS.amount).toFixed(2);
+      if(Math.abs(d) > TOL) rows.push({ 'Item':'Value-Added Services', 'Detail total (RM)':vasSum,
+        'Invoice (RM)':invVAS.amount, 'Difference (RM)':d, 'Note':'VAS detail does not add up to the invoice line' });
+      const tax = +(invVAS.amount * settings.taxRate/100).toFixed(2);
+      if(Math.abs(tax - invVAS.taxAmt) > TOL) rows.push({ 'Item':'VAS tax', 'Invoice (RM)':invVAS.taxAmt,
+        'Expected (RM)':tax, 'Difference (RM)':+(invVAS.taxAmt-tax).toFixed(2), 'Note':`Tax differs from ${settings.taxRate}%` });
+    } else rows.push({ 'Item':'Value-Added Services', 'Note':'Invoice line not found for this customer ID' });
+    res.checks.reconciliation = rows;
+  } else res.checks.reconciliation = null;
+
+  res.totals = {
+    invSH: invSH ? invSH.amount : 0, invVAS: invVAS ? invVAS.amount : 0,
+    gross: (invSH ? invSH.gross : 0) + (invVAS ? invVAS.gross : 0),
+    inbSum, outbSum, storSum, vasSum,
+    orders: new Set(mktLines.map(l => l.order)).size, lines: outbound.length,
+    platCounts, manualTotal: +manual.reduce((s,l) => s+l.charge, 0).toFixed(2), manualN: manual.length,
+    vasUnknownTotal: +vas.filter(l => !vasMatch(l)).reduce((s,l) => s+l.total, 0).toFixed(2),
+    uncheckedNote: ['shopee','lazada','tiktok'].filter(p => platCounts[p] > 0 && !((p==='shopee') && shopee) && !((p==='tiktok') && tiktok))
+      .map(p => `${p} ${platCounts[p]}`).join(' \u00b7 ')
+      + (shopExports.length && shopExports.some(e => e.idsCorrupted) ? ' \u00b7 shopify Ids corrupted \u2014 re-download export' : ''),
+  };
+  return res;
+}
+
+/* ---------- settings UI ---------- */
+const tierRow = t => `<tr><td><input class="t-rate num" type="number" step="0.01" value="${t.rate}"></td>
+  <td><input class="t-max num" type="number" step="0.0001" value="${t.maxCbm}"></td>
+  <td><button type="button" class="row-x">\u00d7</button></td></tr>`;
+const vasRow = c => `<tr><td><input class="v-key" value="${String(c.key).replace(/"/g,'&quot;')}"></td>
+  <td><input class="v-rate num" type="number" step="0.01" value="${c.rate}"></td>
+  <td><button type="button" class="row-x">\u00d7</button></td></tr>`;
+
+function settingsRender(settings, panel){
+  panel.querySelector('#setCust').value = settings.customerId;
+  panel.querySelector('#setTol').value = settings.tolerance;
+  panel.querySelector('#setTax').value = settings.taxRate;
+  panel.querySelector('#setPerOrder').value = settings.outbPerOrder;
+  panel.querySelector('#setStor').value = settings.storageRate;
+  panel.querySelector('#setStorAir').value = settings.storageRateAircon;
+  panel.querySelector('#outbTable tbody').innerHTML = (settings.outbTiers||[]).map(tierRow).join('');
+  panel.querySelector('#inbTable tbody').innerHTML = (settings.inbTiers||[]).map(tierRow).join('');
+  panel.querySelector('#vasTable tbody').innerHTML = (settings.vasCard||[]).map(vasRow).join('');
+  panel.querySelector('#checkToggles').innerHTML = CHECK_META.map(([k,t]) =>
+    `<label><input type="checkbox" data-check="${k}" ${settings.enabled[k]?'checked':''}>${t}</label>`).join('');
+  panel.querySelector('#btnAddOutb').onclick = () => panel.querySelector('#outbTable tbody').insertAdjacentHTML('beforeend', tierRow({rate:0,maxCbm:0}));
+  panel.querySelector('#btnAddInb').onclick = () => panel.querySelector('#inbTable tbody').insertAdjacentHTML('beforeend', tierRow({rate:0,maxCbm:0}));
+  panel.querySelector('#btnAddVas').onclick = () => panel.querySelector('#vasTable tbody').insertAdjacentHTML('beforeend', vasRow({key:'',rate:0}));
+  for(const id of ['#outbTable','#inbTable','#vasTable'])
+    panel.querySelector(id).onclick = e => { if(e.target.classList.contains('row-x')) e.target.closest('tr').remove(); };
+}
+function settingsReadForm(panel, settings){
+  settings.customerId = panel.querySelector('#setCust').value.trim();
+  settings.tolerance = Number(panel.querySelector('#setTol').value) || 0;
+  settings.taxRate = Number(panel.querySelector('#setTax').value) || 0;
+  settings.outbPerOrder = Number(panel.querySelector('#setPerOrder').value) || 0;
+  settings.storageRate = Number(panel.querySelector('#setStor').value) || 0;
+  settings.storageRateAircon = Number(panel.querySelector('#setStorAir').value) || 0;
+  const readTiers = sel => { const a=[]; for(const tr of panel.querySelectorAll(sel+' tbody tr')){
+    const rate=Number(tr.querySelector('.t-rate').value)||0, maxCbm=Number(tr.querySelector('.t-max').value)||0;
+    if(rate>0 && maxCbm>0) a.push({rate,maxCbm}); } a.sort((x,y)=>x.maxCbm-y.maxCbm); return a; };
+  settings.outbTiers = readTiers('#outbTable');
+  settings.inbTiers = readTiers('#inbTable');
+  const vc=[]; for(const tr of panel.querySelectorAll('#vasTable tbody tr')){
+    const key=tr.querySelector('.v-key').value.trim(), rate=Number(tr.querySelector('.v-rate').value)||0;
+    if(key) vc.push({key,rate}); }
+  settings.vasCard = vc;
+  for(const cb of panel.querySelectorAll('#checkToggles input')) settings.enabled[cb.dataset.check] = cb.checked;
+  return true;
+}
+
+/* ---------- dashboard / summary / extra sheets ---------- */
+function dashboard(t, c, fmt){
+  const iss = ['reconciliation','outboundRate','inboundRate','storage','vasArithmetic','vasKnown','duplicates']
+    .reduce((s,k) => s + (Array.isArray(c[k]) ? c[k].length : 0), 0);
+  return [
+    { label:'Invoice (RM)', value:fmt(t.invSH + t.invVAS), note:`S/H/M ${fmt(t.invSH)} \u00b7 VAS ${fmt(t.invVAS)} \u00b7 gross incl tax ${fmt(t.gross)}` },
+    { label:'Handling detail (RM)', value:fmt(t.inbSum + t.outbSum + t.storSum), note:`inbound ${fmt(t.inbSum)} \u00b7 outbound ${fmt(t.outbSum)} \u00b7 storage ${fmt(t.storSum)}` },
+    { label:'Orders billed', value:fmt(t.orders), note:`shopee ${t.platCounts.shopee} \u00b7 lazada ${t.platCounts.lazada} \u00b7 tiktok ${t.platCounts.tiktok} \u00b7 shopify ${t.platCounts.shopify + t.platCounts.shopifyId} \u00b7 manual ${t.manualN}` },
+    { label:'VAS (RM)', value:fmt(t.vasSum), note:`not on card RM${fmt(t.vasUnknownTotal)} \u2014 review` },
+    { label:'Issues', value:iss, note: t.uncheckedNote ? `unchecked (no export): ${t.uncheckedNote}` : 'rate, arithmetic, reconciliation, duplicates' },
+  ];
+}
+function summaryRows(t, s){
+  return [
+    { Item:'Invoice Storage/Handling/Mgmt (RM)', Value:t.invSH }, { Item:'Invoice VAS (RM)', Value:t.invVAS },
+    { Item:'Invoice gross incl tax (RM)', Value:t.gross },
+    { Item:'Inbound detail (RM)', Value:t.inbSum }, { Item:'Outbound detail (RM)', Value:t.outbSum },
+    { Item:'Storage detail (RM)', Value:t.storSum }, { Item:'VAS detail (RM)', Value:t.vasSum },
+    { Item:'Orders billed', Value:t.orders },
+    { Item:'Platform mix', Value:`shopee ${t.platCounts.shopee} / lazada ${t.platCounts.lazada} / tiktok ${t.platCounts.tiktok} / shopify by Name ${t.platCounts.shopify} / shopify by Id ${t.platCounts.shopifyId} / manual ${t.manualN}` },
+    { Item:'Manual lines total (RM)', Value:t.manualTotal },
+    { Item:'VAS not on card (RM)', Value:t.vasUnknownTotal },
+    { Item:'Rules', Value:`Customer ${s.customerId} \u00b7 Tax ${s.taxRate}% \u00b7 Tolerance RM${s.tolerance} \u00b7 Outbound RM${s.outbPerOrder}/order + ${s.outbTiers.map(x=>x.rate).join('/')}/item \u00b7 Inbound ${s.inbTiers.map(x=>x.rate).join('/')}/item \u00b7 Storage RM${s.storageRate}/CBM/day` },
+  ];
+}
+function extraSheets(res){
+  const out = [];
+  if(Array.isArray(res.outbDetail) && res.outbDetail.length) out.push({ name:'Outbound rate check (all)', rows:res.outbDetail });
+  return out;
+}
+
+/* ---------- kit wiring ---------- */
+if(typeof document !== 'undefined' && typeof VK !== 'undefined'){
+  VK.initApp({
+    firebase: {
+      config: { apiKey:"AIzaSyAzibrJ1TCtv6pojhBQYEvxqKtLsWMabs4", authDomain:"purest-sync-tool.firebaseapp.com",
+                projectId:"purest-sync-tool", storageBucket:"purest-sync-tool.firebasestorage.app",
+                messagingSenderId:"634850390349", appId:"1:634850390349:web:6fd3ba4964e2152e55c704" },
+      doc: 'njv',
+    },
+    settingsKey: 'njvVerifySettings_v1',
+    defaults: DEFAULT_SETTINGS,
+    locale: 'en-MY',
+    exportFilename: 'NJV_Verification.xlsx',
+    noFileLabel: 'Not run \u2014 no order export uploaded',
+    uploads: [
+      { dropId:'dropBill', fileId:'fileBill', key:'bill', read:'buffer', parser:buf => parseBill(XLSX.read(buf,{type:'array'})) },
+      { dropId:'dropShopifySG', fileId:'fileShopifySG', key:'shopifySG', read:'text', parser:parseShopify },
+      { dropId:'dropShopifyMY', fileId:'fileShopifyMY', key:'shopifyMY', read:'text', parser:parseShopify },
+      { dropId:'dropShopee', fileId:'fileShopee', key:'shopee', read:'buffer', parser:buf => parseShopee(XLSX.read(buf,{type:'array'})) },
+      { dropId:'dropTiktok', fileId:'fileTiktok', key:'tiktok', read:'buffer', parser:buf => parseTiktok(XLSX.read(buf,{type:'array'})) },
+    ],
+    runReady: state => !!state.bill,
+    verify: (state, settings) => runVerification(state.bill, state.shopifySG||null, state.shopifyMY||null, state.shopee||null, state.tiktok||null, settings),
+    checkMeta: CHECK_META,
+    dashboard, summaryRows,
+    settingsForm: { render: settingsRender, read: settingsReadForm },
+    extraSheets,
+  });
+}
+
+</script>
+</body>
+</html>
